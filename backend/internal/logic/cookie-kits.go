@@ -26,7 +26,7 @@ type CookieUtils struct {
 	// JWT配置
 	secret        []byte
 	signingMethod jwt.SigningMethod
-	expiresAt     *jwt.NumericDate
+	expiresAt     func(d time.Duration) *jwt.NumericDate
 
 	// Cookie配置
 	key      string
@@ -38,7 +38,7 @@ type CookieUtils struct {
 
 func (c *CookieUtils) NewWithClaims(claims WrapperClaims, opts ...jwt.TokenOption) *jwt.Token {
 	claims.SetRegisteredClaims(jwt.RegisteredClaims{
-		ExpiresAt: c.expiresAt,
+		ExpiresAt: c.expiresAt(c.maxAge),
 	})
 	return jwt.NewWithClaims(c.signingMethod, claims, opts...)
 }
@@ -119,6 +119,8 @@ func (c *CookieUtils) BuildWithConfig(cfg *config.CookieConfig) {
 		} else {
 			c.signingMethod = jwt.SigningMethodHS256
 		}
-		c.expiresAt = jwt.NewNumericDate(time.Now().Add(c.maxAge))
+		c.expiresAt = func(d time.Duration) *jwt.NumericDate {
+			return jwt.NewNumericDate(time.Now().Add(d))
+		}
 	}
 }

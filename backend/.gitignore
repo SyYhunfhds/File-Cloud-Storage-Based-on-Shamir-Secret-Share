@@ -40,5 +40,10 @@ resource/public/swagger/
 /business
 # 测试文件
 /example
+tests/data
 # pkg目录下的Markdown文档
 /pkg/**/*.md
+# 临时查询控制台
+/temp.sql
+# 构建目录
+/Release/

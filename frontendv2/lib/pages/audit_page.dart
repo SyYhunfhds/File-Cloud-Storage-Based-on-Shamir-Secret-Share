@@ -7,9 +7,11 @@ import 'package:go_router/go_router.dart';
 import 'package:file_picker/file_picker.dart';
 
 import '../models/item.dart';
+import '../models/share.dart';
 import '../providers/auth_provider.dart';
 import '../providers/audit_provider.dart';
 import '../providers/service_providers.dart';
+import '../services/storage_service.dart';
 import '../utils/constants.dart';
 
 class AuditPage extends ConsumerStatefulWidget {
@@ -20,6 +22,7 @@ class AuditPage extends ConsumerStatefulWidget {
 }
 
 class _AuditPageState extends ConsumerState<AuditPage> {
+  final StorageService _storageService = StorageService();
   bool _isLoading = false;
   bool _isUploading = false;
   int _currentPage = 1;
@@ -29,7 +32,12 @@ class _AuditPageState extends ConsumerState<AuditPage> {
   @override
   void initState() {
     super.initState();
-    _loadItems();
+    _initAndLoad();
+  }
+
+  Future<void> _initAndLoad() async {
+    await _storageService.init();
+    await _loadItems();
   }
 
   Future<void> _loadItems() async {
@@ -83,6 +91,14 @@ class _AuditPageState extends ConsumerState<AuditPage> {
         setState(() => _isUploading = false);
 
         if (response.isSuccess && response.data != null) {
+          // 保存份额到本地（直接保存Base64字符串，不做任何解析）
+          final localShare = LocalShare(
+            filename: file.name,
+            shareValue: response.data!.authShare,
+            createdAt: DateTime.now(),
+          );
+          await _storageService.saveShare(localShare);
+
           _showRecoveryCodeDialog(response.data!);
           _loadItems();
         } else {

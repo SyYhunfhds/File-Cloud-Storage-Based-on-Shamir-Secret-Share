@@ -74,20 +74,23 @@ func ShareFromBase64(data string) (Share, error) {
 	return share, nil
 }
 func ShareFromBase64Bytes(data []byte) (Share, error) {
-	// Base64解码
-	unencodedBytes := make([]byte, base64.StdEncoding.DecodedLen(len(data)))
-	_, err := base64.StdEncoding.Decode(unencodedBytes, data)
-	if err != nil {
-		return Share{}, err
-	}
-	// Json序列化
-	var share Share
-	err = json.Unmarshal(unencodedBytes, &share)
-	memclr(unencodedBytes)
-	if err != nil {
-		return Share{}, err
-	}
-	return share, nil
+	/*
+		// Base64解码
+			unencodedBytes := make([]byte, base64.StdEncoding.DecodedLen(len(data)))
+			_, err := base64.StdEncoding.Decode(unencodedBytes, data)
+			if err != nil {
+				return Share{}, err
+			}
+			// Json序列化
+			var share Share
+			err = json.Unmarshal(unencodedBytes, &share)
+			memclr(unencodedBytes)
+			if err != nil {
+				return Share{}, err
+			}
+			return share, nil
+	*/
+	return ShareFromBase64(string(data))
 }
 
 // ShareVector is a collection of shares.

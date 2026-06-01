@@ -8,6 +8,7 @@ class Constants {
   static const String storageTokenKey = 'auth_token';
   static const String storageUserIdKey = 'user_id';
   static const String storageUsernameKey = 'username';
+  static const String storageSharesKey = 'shares';  // 份额存储键名
 
   // 路由路径
   static const String routeLogin = '/login';

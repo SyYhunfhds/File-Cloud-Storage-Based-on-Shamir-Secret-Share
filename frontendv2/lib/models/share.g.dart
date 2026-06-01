@@ -21,3 +21,16 @@ Map<String, dynamic> _$ShareToJson(Share instance) => <String, dynamic>{
   'version': instance.version,
   'createdAt': instance.createdAt.toIso8601String(),
 };
+
+LocalShare _$LocalShareFromJson(Map<String, dynamic> json) => LocalShare(
+  filename: json['filename'] as String,
+  shareValue: json['shareValue'] as String,
+  createdAt: DateTime.parse(json['createdAt'] as String),
+);
+
+Map<String, dynamic> _$LocalShareToJson(LocalShare instance) =>
+    <String, dynamic>{
+      'filename': instance.filename,
+      'shareValue': instance.shareValue,
+      'createdAt': instance.createdAt.toIso8601String(),
+    };

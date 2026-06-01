@@ -2,3 +2,7 @@ backend/docs/private
 /exploration
 /frontendv2/**/Runner
 /frontendv2/ios/
+/backend/temp.sql
+/frontend-without-beep
+/frontend/frontend-without-beep
+/frontend/lib-without-beep

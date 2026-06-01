@@ -8,22 +8,30 @@ import (
 	"math"
 
 	"github.com/gogf/gf/v2/database/gdb"
+	"github.com/gogf/gf/v2/errors/gcode"
+	"github.com/gogf/gf/v2/errors/gerror"
 	"github.com/gogf/gf/v2/frame/g"
+	"github.com/gogf/gf/v2/net/gtrace"
 	"github.com/gogf/gf/v2/util/gconv"
 	"github.com/spaolacci/murmur3"
+	"go.opentelemetry.io/otel/attribute"
+	"go.opentelemetry.io/otel/codes"
 )
 
 // Create
 //
 // 使用事务, 在创建账号的同时创建职员信息
 func (c *ControllerV1) Create(ctx context.Context, req *v1.CreateReq) (res *v1.CreateRes, err error) {
+	ctx, span := gtrace.NewSpan(ctx, "Register")
+	defer span.End()
+
 	// Request如果有参数无法通过校验会直接在路由层被拦截
 	var insertId int64
 	err = g.DB().Transaction(ctx, func(ctx context.Context, tx gdb.TX) error {
 		passwdHash, herr := c.hashGen(req.Password)
 		if herr != nil {
 			return herr
-		}
+		} // 不知道什么能给Argon整出报错来
 
 		// 获取最低一级的岗位
 		lowestJob, innerErr := dao.GetLowestJob(ctx)
@@ -57,6 +65,13 @@ func (c *ControllerV1) Create(ctx context.Context, req *v1.CreateReq) (res *v1.C
 
 		return nil
 	})
+
+	if err != nil {
+		span.SetStatus(codes.Error, "用户注册失败")
+		span.SetAttributes(attribute.String("db.insert.error", err.Error()))
+
+		return nil, gerror.NewCode(gcode.CodeDbOperationError, "注册失败")
+	}
 
 	res = &v1.CreateRes{
 		Id: insertId,

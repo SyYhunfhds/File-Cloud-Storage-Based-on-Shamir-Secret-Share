@@ -1,0 +1,14 @@
+<component name="ProjectRunConfigurationManager">
+  <configuration default="false" name="构建Release版" type="GoApplicationRunConfiguration" factoryName="Go Application">
+    <module name="CryptographyDesign" />
+    <working_directory value="$PROJECT_DIR$" />
+    <go_parameters value="-o Release\main-0.4.14.exe" />
+    <kind value="PACKAGE" />
+    <package value="backend" />
+    <directory value="$PROJECT_DIR$" />
+    <filePath value="$PROJECT_DIR$/../CryptographyDesign|$PROJECT_DIR$/backend/main.go" />
+    <output_directory value="$PROJECT_DIR$/backend" />
+    <option name="run" value="false" />
+    <method v="2" />
+  </configuration>
+</component>

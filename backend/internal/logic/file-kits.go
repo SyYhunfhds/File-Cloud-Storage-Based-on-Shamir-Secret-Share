@@ -4,7 +4,9 @@ import (
 	"backend/internal/config"
 	"crypto/aes"
 	"crypto/cipher"
+	"strings"
 	"sync"
+	"unicode"
 
 	"github.com/gogf/gf/v2/errors/gerror"
 	"github.com/gogf/gf/v2/net/ghttp"
@@ -17,9 +19,12 @@ import (
 var fileBufferPool = sync.Pool{New: func() any { return new([4096]byte) }}
 
 type FileUtils struct {
-	uploadDir    string
-	rawUploadDir string // 原始上传目录
-	encryptDir   string // 加密文件存储目录
+	uploadDir      string
+	rawUploadDir   string // 原始上传目录
+	encryptDir     string // 加密文件存储目录
+	tempDir        string // 临时文件存储目录 (缓存解密文件)
+	unlockedDir    string // 解密文件的暂存目录
+	rawUnlockedDir string // (原始目录)解密文件的暂存目录
 
 	// 加密配置
 
@@ -85,24 +90,41 @@ func (fu *FileUtils) GenGCMCipher(setZeroAfterUse ...bool) (gcm cipher.AEAD, key
 
 	return gcm, key, nil
 }
-func (fu *FileUtils) EncryptAndSaveFile(file *ghttp.UploadFile, path string) (key []byte, name string, err error) {
+func (fu *FileUtils) GenGCMCipherWithKey(key []byte) (gcm cipher.AEAD, err error) {
+	block, err := aes.NewCipher(key)
+	if err != nil {
+		return nil, err
+	}
+
+	gcm, err = cipher.NewGCM(block)
+	if err != nil {
+		return nil, err
+	}
+
+	return gcm, nil
+}
+
+func (fu *FileUtils) EncryptAndSaveFile(file *ghttp.UploadFile, path string) (ciphertext []byte, key []byte, name string, err error) {
 	// 读取文件
 	plain, err := fu.ReadBytes(file)
 	if err != nil {
-		return nil, "", err
+		return nil, nil, "", err
 	}
 
 	// 获取加密器
 	gcm, key, err := fu.GenGCMCipher()
 	if err != nil {
-		return nil, "", err
+		return nil, nil, "", err
 	}
 
 	// 加密数据
 	tailCopy := make([]byte, len(fu.filetail)) // 附加数据
 	copy(tailCopy, fu.filetail)
-	ciphertext := gcm.Seal(plain[:0], fu.nonce, plain, tailCopy) // 存在BUG: 会把原始字节也写进文件里
+	// glog.Debugf(gctx.New(), "[Encrypt File] Plain data: %x", plain)
+	ciphertext = gcm.Seal(plain[:0], fu.nonce, plain, tailCopy) // 存在BUG: 会把原始字节也写进文件里
 	// glog.Debugf(gctx.New(), "encrypted data: \n%s", string(ciphertext))
+
+	// glog.Debugf(gctx.New(), "[Encrypt File] Cipher data: %x", ciphertext)
 
 	name = file.Filename + ".enc"
 	savePath := gfile.Join(path, name)
@@ -114,8 +136,70 @@ func (fu *FileUtils) EncryptAndSaveFile(file *ghttp.UploadFile, path string) (ke
 	}
 
 	err = gfile.PutBytes(savePath, ciphertext)
-	return key, name, err
+	return ciphertext, key, name, err
 }
+
+func (fu *FileUtils) EncryptBytes(plaintext []byte, key []byte, autoSetZero ...bool) (ciphertext []byte, randKey []byte, err error) {
+	var enableSetZero bool // 自动置空明文字节
+	if len(autoSetZero) > 0 {
+		enableSetZero = autoSetZero[0]
+	} else {
+		enableSetZero = true
+	}
+
+	if len(key) < 16 { // 生成新的密钥
+		key = grand.B(fu.keySize)
+	}
+	randKey = key
+
+	// 生成加密器
+	block, err := aes.NewCipher(key)
+	if err != nil {
+		return nil, nil, err
+	}
+	gcm, err := cipher.NewGCM(block)
+	if err != nil {
+		return nil, nil, err
+	}
+	tailCopy := make([]byte, len(fu.filetail)) // 附加数据
+	copy(tailCopy, fu.filetail)
+	ciphertext = gcm.Seal(nil, fu.nonce, plaintext, tailCopy) // 加密数据
+
+	if enableSetZero {
+		Memclr(plaintext) // 置空明文字节
+	}
+
+	return ciphertext, randKey, nil
+}
+
+func (fu *FileUtils) DecryptBytes(bytes []byte, key []byte, autoMemclr ...bool) (plaintext []byte, err error) {
+	var enableMemclr bool
+	if len(autoMemclr) > 0 {
+		enableMemclr = autoMemclr[0]
+	} else {
+		enableMemclr = true
+	}
+
+	// 获取加密器
+	gcm, err := fu.GenGCMCipherWithKey(key)
+	if err != nil {
+		return nil, err
+	}
+	tailCopy := make([]byte, len(fu.filetail)) // 附加数据
+	copy(tailCopy, fu.filetail)
+	// 解密数据
+	plaintext, err = gcm.Open([]byte{}, fu.nonce, bytes, tailCopy)
+
+	if enableMemclr {
+		Memclr(bytes) // 置空密文数据
+		Memclr(key)   // 置空密钥字节
+	}
+	if err != nil {
+		return nil, err
+	}
+	return plaintext, err
+}
+
 func (fu *FileUtils) Delete(file *ghttp.UploadFile, path string) (err error) {
 	name := file.Filename + ".enc"
 	deletePath := gfile.Join(path, name)
@@ -128,6 +212,115 @@ func (fu *FileUtils) Delete(file *ghttp.UploadFile, path string) (err error) {
 	return
 }
 
+// isDigitOnly 检查字符串是否只包含数字
+func (fu *FileUtils) isDigitOnly(s string) bool {
+	for _, c := range s {
+		if !unicode.IsDigit(c) {
+			return false
+		}
+	}
+	return true
+}
+
+// ParseEncFilename 解析加密文件名，返回基本名和原始扩展名
+// 文件名格式: <基本名>.<原始扩展名>.1.1.1.enc
+// .1 部分是防重名标记，可能出现多次
+// .enc 是固定后缀
+func (fu *FileUtils) ParseEncFilename(filename string) (basename string, ext string, matched bool) {
+	if !strings.HasSuffix(filename, ".enc") {
+		return "", "", false
+	}
+
+	nameWithoutEnc := filename[:len(filename)-4]
+	parts := strings.Split(nameWithoutEnc, ".")
+	if len(parts) == 0 {
+		return "", "", false
+	}
+
+	i := len(parts) - 1
+	for i >= 0 && fu.isDigitOnly(parts[i]) {
+		i--
+	}
+
+	if i < 0 {
+		return "", "", false
+	}
+
+	remainingParts := parts[:i+1]
+
+	if len(remainingParts) == 1 {
+		return remainingParts[0], "", true
+	}
+
+	basename = remainingParts[0]
+	ext = strings.Join(remainingParts[1:], ".")
+
+	return basename, ext, true
+}
+
+func (fu *FileUtils) ItemExits(filename string) error {
+	path := gfile.Join(fu.encryptDir, filename)
+	if !gfile.Exists(path) {
+		return gerror.Newf("文件 %s 不存在", gfile.Abs(path))
+	}
+	return nil
+}
+
+func (fu *FileUtils) ReadItemBytes(filename string) (bytes []byte, err error) {
+	if err = fu.ItemExits(filename); err != nil {
+		return nil, err
+	}
+
+	path := gfile.Join(fu.encryptDir, filename)
+	bytes = gfile.GetBytes(path)
+	return bytes, nil
+}
+func (fu *FileUtils) ReadAndDecryptItem(filename string, key []byte) (plaintext []byte, err error) {
+	if err = fu.ItemExits(filename); err != nil {
+		return nil, err
+	}
+	path := gfile.Join(fu.encryptDir, filename)
+	bytes := gfile.GetBytes(path)
+	plaintext, err = fu.DecryptBytes(bytes, key)
+	Memclr(bytes) // 置空密文数据
+	return plaintext, err
+}
+func (fu *FileUtils) DecryptAndSaveItem(filename string, key []byte) (del func() error, err error) {
+	if err = fu.ItemExits(filename); err != nil {
+		return del, err
+	}
+	basename, ext, valid := fu.ParseEncFilename(filename)
+	if !valid {
+		return del, gerror.Newf("文件名 %s 格式不正确", filename)
+	}
+	savePath := gfile.Join(fu.tempDir, basename+"."+ext)
+
+	plainbytes, err := fu.ReadAndDecryptItem(filename, key)
+	if err != nil {
+		return del, err
+	}
+
+	err = gfile.PutBytes(savePath, plainbytes)
+	if err != nil {
+		return del, err
+	}
+
+	del = func() error {
+		return gfile.RemoveFile(savePath)
+	}
+	return del, nil
+}
+func (fu *FileUtils) ItemDownload(r *ghttp.Response, filename string) (err error) {
+	basename, ext, valid := fu.ParseEncFilename(filename)
+	if !valid {
+		return gerror.Newf("文件名 %s 格式不正确", filename)
+	}
+	temPath := gfile.Join(fu.tempDir, basename+"."+ext)
+
+	r.ServeFileDownload(temPath)
+	return nil
+}
+
 func NewFileUtils() *FileUtils {
 	return &FileUtils{}
 }
@@ -136,6 +329,12 @@ func (fu *FileUtils) BuildWithConfig(cfg *config.Item) {
 	{
 		fu.uploadDir = gfile.Join("business", "item", cfg.UploadDir)
 		fu.rawUploadDir = cfg.UploadDir
+		fu.encryptDir = gfile.Join("business", "item", cfg.EncryptedFileDir)
+		fu.unlockedDir = gfile.Join("business", "item", cfg.UnlockedFileDir)
+		fu.rawUnlockedDir = cfg.UnlockedFileDir
+		fu.tempDir = gfile.Temp("business", "item", "decryption")
+
+		// glog.Debugf(gctx.New(), "解密文件暂存目录为: %s", gfile.Abs(fu.unlockedDir))
 
 		fu.filetail = []byte("ITEM") // 硬编码文件头
 		fu.keySize = cfg.KeySize

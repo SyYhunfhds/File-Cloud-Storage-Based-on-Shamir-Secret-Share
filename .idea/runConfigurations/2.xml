@@ -1,0 +1,14 @@
+<component name="ProjectRunConfigurationManager">
+  <configuration default="false" name="大文件加密、密钥还原、解密流程测试" type="GoTestRunConfiguration" factoryName="Go Test">
+    <module name="CryptographyDesign" />
+    <working_directory value="$PROJECT_DIR$/backend/tests/file-enc-dec" />
+    <root_directory value="$PROJECT_DIR$/backend" />
+    <kind value="PACKAGE" />
+    <package value="backend/tests/file-enc-dec" />
+    <directory value="$PROJECT_DIR$" />
+    <filePath value="$PROJECT_DIR$" />
+    <framework value="gotest" />
+    <pattern value="^\QTestEncryptAndDecryptFile\E$" />
+    <method v="2" />
+  </configuration>
+</component>

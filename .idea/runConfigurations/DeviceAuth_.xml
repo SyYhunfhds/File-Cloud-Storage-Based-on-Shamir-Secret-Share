@@ -1,0 +1,13 @@
+<component name="ProjectRunConfigurationManager">
+  <configuration default="false" name="Device与Auth份额恢复文件-基本测试" type="GoTestRunConfiguration" factoryName="Go Test">
+    <module name="CryptographyDesign" />
+    <working_directory value="$PROJECT_DIR$/backend" />
+    <kind value="PACKAGE" />
+    <package value="backend/tests/file-enc-dec" />
+    <directory value="$PROJECT_DIR$" />
+    <filePath value="$PROJECT_DIR$" />
+    <framework value="gotest" />
+    <pattern value="^\QTestRecoverSecretFromShare\E$" />
+    <method v="2" />
+  </configuration>
+</component>

@@ -104,6 +104,7 @@ func (cu *CryptoUtils) SymmetricEncrypt(plaintext []byte, key []byte, autoMemclr
 	nonce := grand.B(gcm.NonceSize())
 	ciphertext = gcm.Seal(nonce, nonce, plaintext, cu.ao.additionalBytes)
 	// cipher = nonce + encrypted + addition
+	// glog.Debugf(gctx.New(), "[Encryption] encrypted data: \n%x", ciphertext)
 
 	if enableMemclr {
 		Memclr(plaintext)
@@ -131,6 +132,8 @@ func (cu *CryptoUtils) SymmetricDecrypt(ciphertext []byte, key []byte, autoMemcl
 	} else {
 		enableMemclr = true
 	}
+
+	// glog.Debugf(gctx.New(), "[Decryption] encrypted data: \n%x", ciphertext)
 
 	block, err := aes.NewCipher(key)
 	if err != nil {

@@ -129,6 +129,9 @@ var (
 
 				// 条目提交API
 				group.POST("/item/submit", itemctrl.PortableItemSubmit(&mainConfig.Item, &mainConfig.Server.Argon))
+				// 条目下载API; 当前不支持条目Member下载条目, 因为没有为成员重新计算份额
+				group.GET("/item/download", itemctrl.PortableItemDownload(&mainConfig.Item))
+				group.POST("/item/download", itemctrl.PortableItemDownload(&mainConfig.Item))
 
 				// 其他条目管理API (不需要访问原始Request对象的)
 				// 需要额外绑定中间件
