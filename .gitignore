@@ -1,3 +1,4 @@
 backend/docs/private
 /exploration
 /frontendv2/**/Runner
+/frontendv2/ios/
