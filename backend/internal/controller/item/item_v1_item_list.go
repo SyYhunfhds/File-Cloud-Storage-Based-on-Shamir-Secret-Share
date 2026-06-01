@@ -27,12 +27,13 @@ func (c *ControllerV1) ItemList(ctx context.Context, req *v1.ItemListReq) (res *
 	err = dao.Items.Ctx(ctx).
 		Raw(`
 select
-    filename, uploaded_at, changed_at, 
+    i.id as item_id, filename, uploaded_at, changed_at, 
     ownerUsers.username as owner, uploaderUsers.username as uploader
     from public.items i
 left join public.users ownerUsers on ownerUsers.id = i.owner_id
 left join public.users uploaderUsers on uploaderUsers.id = i.uploader_id
 where i.owner_id = ? OR i.minimum_privilege < ?
+order by uploaded_at desc
 `, ac.Id, ac.Privilege).
 		Offset(offset).
 		Limit(limit).
