@@ -1,0 +1,42 @@
+.buildpath
+.hgignore.swp
+.project
+.orig
+.swp
+.idea/
+.settings/
+.vscode/
+bin/
+**/.DS_Store
+gf
+main
+main.exe
+output/
+manifest/output/
+temp/
+temp.yaml
+bin
+**/config/config.yaml
+
+# 忽略开发配置
+hack/
+.idea/data*.xml
+.idea/data_source_mapping.xml
+.idea/dataSources.xml
+.idea/sqldialects.xml
+# 忽略工具生成文件
+api/
+internal/dao/internal
+internal/model/do
+internal/model/entity
+# 保留接口定义
+!api/hello/v1/hello.go
+# 忽略开发文档
+docs/private
+resource/public/swagger/
+# 业务目录
+/uploads/
+/bussiness/
+/business
+# 测试文件
+/example
