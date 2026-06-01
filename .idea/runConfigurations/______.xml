@@ -1,0 +1,14 @@
+<component name="ProjectRunConfigurationManager">
+  <configuration default="false" name="模块测试 - 文件列表封装 - 单元测试" type="GoTestRunConfiguration" factoryName="Go Test">
+    <module name="CryptographyDesign" />
+    <working_directory value="$PROJECT_DIR$/backend/tests/internal/module/watcher" />
+    <root_directory value="$PROJECT_DIR$/backend" />
+    <kind value="PACKAGE" />
+    <package value="backend/tests/internal/module/watcher" />
+    <directory value="$PROJECT_DIR$" />
+    <filePath value="$PROJECT_DIR$" />
+    <framework value="gotest" />
+    <pattern value="^\QTestFilesBasicFunctionality\E$" />
+    <method v="2" />
+  </configuration>
+</component>

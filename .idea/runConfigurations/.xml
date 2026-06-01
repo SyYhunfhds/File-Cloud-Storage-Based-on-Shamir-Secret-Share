@@ -1,0 +1,11 @@
+<component name="ProjectRunConfigurationManager">
+  <configuration default="false" name="后端主服务" type="GoApplicationRunConfiguration" factoryName="Go Application">
+    <module name="CryptographyDesign" />
+    <working_directory value="$PROJECT_DIR$/backend" />
+    <kind value="PACKAGE" />
+    <package value="backend" />
+    <directory value="$PROJECT_DIR$" />
+    <filePath value="$PROJECT_DIR$/backend/main.go" />
+    <method v="2" />
+  </configuration>
+</component>
