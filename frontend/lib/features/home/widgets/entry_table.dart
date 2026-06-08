@@ -10,6 +10,7 @@ import '../../items/services/item_api_service.dart';
 import '../../auth/providers/auth_provider.dart';
 import '../../download/providers/download_provider.dart';
 import '../../shares/providers/share_providers.dart';
+import '../providers/entry_provider.dart';
 
 /// 财务条目数据表格
 ///
@@ -106,6 +107,38 @@ class _EntryTableState extends ConsumerState<EntryTable> {
           content: Text(resp.isSuccess ? '申请已提交' : '申请失败: ${resp.message}'),
         ),
       );
+    }
+  }
+
+  Future<void> _handleEdit(ItemInfo entry) async {
+    final result = await showDialog<ItemUpdateReq>(
+      context: context,
+      builder: (ctx) => _ItemEditDialog(entry: entry),
+    );
+
+    if (result == null || !mounted) return;
+
+    final notifier = ref.read(entryListProvider.notifier);
+    final success = await notifier.updateItem(result);
+
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(success ? '更新成功' : '更新失败'),
+      ),
+    );
+
+    if (success) {
+      // 刷新当前列表
+      final mode = ref.read(entryListProvider).filterMode;
+      switch (mode) {
+        case EntryFilterMode.my:
+          ref.read(entryListProvider.notifier).fetchMyEntries();
+        case EntryFilterMode.public:
+          ref.read(entryListProvider.notifier).fetchPublicEntries();
+        case EntryFilterMode.all:
+          ref.read(entryListProvider.notifier).fetchAllEntries();
+      }
     }
   }
 
@@ -278,9 +311,7 @@ class _EntryTableState extends ConsumerState<EntryTable> {
                   debugPrint('[详情] itemId=${entry.itemId}');
                 }),
                 const SizedBox(width: 4),
-                _actionButton('修改', () {
-                  debugPrint('[修改] itemId=${entry.itemId}');
-                }),
+                _actionButton('修改', () => _handleEdit(entry)),
                 const SizedBox(width: 4),
                 _actionButton(
                   entry.canDownload ? '下载' : '申请下载权限',
@@ -331,5 +362,110 @@ class _EntryTableState extends ConsumerState<EntryTable> {
 
   String _formatDate(DateTime date) {
     return '${date.year}-${date.month.toString().padLeft(2, '0')}-${date.day.toString().padLeft(2, '0')}';
+  }
+}
+
+// =============================================================================
+// 条目修改对话框
+// =============================================================================
+
+class _ItemEditDialog extends StatefulWidget {
+  final ItemInfo entry;
+  const _ItemEditDialog({required this.entry});
+
+  @override
+  State<_ItemEditDialog> createState() => _ItemEditDialogState();
+}
+
+class _ItemEditDialogState extends State<_ItemEditDialog> {
+  late int _minimumPrivilege;
+  bool _enablePublic = false;
+
+  @override
+  void initState() {
+    super.initState();
+    // ItemInfo 不含 minimumPrivilege/isPublic，默认值由用户编辑
+    _minimumPrivilege = 1;
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+
+    return AlertDialog(
+      title: const Text('修改条目'),
+      content: SizedBox(
+        width: 380,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // 条目标识
+            Container(
+              padding: const EdgeInsets.all(10),
+              decoration: BoxDecoration(
+                color: colorScheme.surfaceContainerHighest.withValues(alpha: 0.5),
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: Text(
+                '条目 #${widget.entry.itemId}: ${widget.entry.filename}',
+                style: const TextStyle(fontSize: 13, fontFamily: 'monospace'),
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
+              ),
+            ),
+            const SizedBox(height: 20),
+
+            // 最低权限等级下拉
+            DropdownButtonFormField<int>(
+              value: _minimumPrivilege,
+              decoration: const InputDecoration(
+                labelText: '最低权限等级',
+                helperText: '低于此权限的用户无法下载',
+                border: OutlineInputBorder(),
+                isDense: true,
+              ),
+              items: List.generate(5, (i) => i + 1)
+                  .map((v) => DropdownMenuItem(
+                        value: v,
+                        child: Text('$v${v == 1 ? ' (默认)' : ''}',
+                            style: const TextStyle(fontSize: 13)),
+                      ))
+                  .toList(),
+              onChanged: (v) {
+                if (v != null) setState(() => _minimumPrivilege = v);
+              },
+            ),
+            const SizedBox(height: 16),
+
+            // 公开搜索开关
+            SwitchListTile(
+              title: const Text('允许公开搜索', style: TextStyle(fontSize: 13)),
+              subtitle: const Text('开启后所有用户可搜索到该条目',
+                  style: TextStyle(fontSize: 11)),
+              value: _enablePublic,
+              onChanged: (v) => setState(() => _enablePublic = v),
+              contentPadding: EdgeInsets.zero,
+            ),
+          ],
+        ),
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.of(context).pop(),
+          child: const Text('取消'),
+        ),
+        FilledButton(
+          onPressed: () {
+            Navigator.of(context).pop(ItemUpdateReq(
+              filename: widget.entry.filename,
+              minimumPrivilege: _minimumPrivilege,
+              enablePublic: _enablePublic,
+            ));
+          },
+          child: const Text('保存'),
+        ),
+      ],
+    );
   }
 }

@@ -1,6 +1,9 @@
 package config
 
-import "github.com/pilinux/argon2"
+import (
+	"github.com/gogf/gf/v2/util/grand"
+	"github.com/pilinux/argon2"
+)
 
 type ArgonConfig struct {
 	// Secret Argon2d 额外密钥
@@ -25,6 +28,18 @@ func (cfg *ArgonConfig) AsArgonParams() argon2.Params {
 		Parallelism: cfg.Parallelism,
 		SaltLength:  cfg.SaltLength,
 		KeyLength:   cfg.KeyLength,
+	}
+}
+
+func DefaultArgonConfig() ArgonConfig {
+	return ArgonConfig{
+		Secret: grand.S(32),
+
+		Memory:      64 * 1024,
+		Iterations:  3,
+		Parallelism: 2,
+		SaltLength:  16,
+		KeyLength:   32,
 	}
 }
 

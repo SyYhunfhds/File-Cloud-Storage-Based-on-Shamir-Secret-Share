@@ -25,6 +25,7 @@ func (c *ControllerV1) ItemUpdate(ctx context.Context, req *v1.ItemUpdateReq) (r
 		return nil, gerror.NewCode(gcode.CodeInvalidOperation, "权限设置过高, 不予批准")
 	}
 
+	// 这个时候会有水平越权, 但并不会执行
 	model := dao.Items.Ctx(ctx).Where("owner_id", ac.Id).Where("filename", req.Filename).
 		Data(g.Map{
 			"minimum_privilege": req.MinimumPrivilege,

@@ -14,25 +14,28 @@ func Memclr(b []byte) {
 }
 
 type HashUtils struct {
-	HashGen    func(password string) (string, error)
-	HashVerify func(password string, hash string) (bool, error)
+	secret string
+	params *argon2.Params
+}
+
+func (hu *HashUtils) HashGen(password string) (string, error) {
+	return argon2.CreateHash(password, hu.secret, hu.params)
+}
+func (hu *HashUtils) HashVerify(password string, hash string) (bool, error) {
+	return argon2.ComparePasswordAndHash(password, hu.secret, hash)
 }
 
 func NewHashUtils() *HashUtils {
 	return &HashUtils{}
 }
-func (u *HashUtils) BuildWithConfig(cfg *config.ArgonConfig) {
-	params := &argon2.Params{ // 这个参数将会被分配到堆上
-		Iterations:  cfg.Iterations,
-		KeyLength:   cfg.KeyLength,
+func (hu *HashUtils) BuildWithConfig(cfg *config.ArgonConfig) {
+	hu.secret = cfg.Secret
+	hu.params = &argon2.Params{
 		Memory:      cfg.Memory,
+		Iterations:  cfg.Iterations,
 		Parallelism: cfg.Parallelism,
 		SaltLength:  cfg.SaltLength,
+		KeyLength:   cfg.KeyLength,
 	}
-	u.HashGen = func(password string) (string, error) {
-		return argon2.CreateHash(password, cfg.Secret, params)
-	}
-	u.HashVerify = func(password string, hash string) (bool, error) {
-		return argon2.ComparePasswordAndHash(password, cfg.Secret, hash)
-	}
+
 }

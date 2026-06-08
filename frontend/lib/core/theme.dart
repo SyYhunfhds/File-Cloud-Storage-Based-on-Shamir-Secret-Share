@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 /// Material Design 3 主题配置
 class AppTheme {
@@ -24,3 +25,15 @@ class AppTheme {
         visualDensity: VisualDensity.compact,
       );
 }
+
+/// 主题模式状态管理
+class ThemeModeNotifier extends Notifier<ThemeMode> {
+  @override
+  ThemeMode build() => ThemeMode.light;
+
+  void set(ThemeMode mode) => state = mode;
+}
+
+/// 主题模式 Provider
+final themeModeProvider =
+    NotifierProvider<ThemeModeNotifier, ThemeMode>(ThemeModeNotifier.new);

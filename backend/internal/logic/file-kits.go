@@ -104,7 +104,7 @@ func (fu *FileUtils) GenGCMCipherWithKey(key []byte) (gcm cipher.AEAD, err error
 	return gcm, nil
 }
 
-func (fu *FileUtils) EncryptAndSaveFile(file *ghttp.UploadFile, path string) (ciphertext []byte, key []byte, name string, err error) {
+func (fu *FileUtils) EncryptAndSaveFile(file *ghttp.UploadFile) (ciphertext []byte, key []byte, name string, err error) {
 	// 读取文件
 	plain, err := fu.ReadBytes(file)
 	if err != nil {
@@ -120,23 +120,19 @@ func (fu *FileUtils) EncryptAndSaveFile(file *ghttp.UploadFile, path string) (ci
 	// 加密数据
 	tailCopy := make([]byte, len(fu.filetail)) // 附加数据
 	copy(tailCopy, fu.filetail)
-	// glog.Debugf(gctx.New(), "[Encrypt File] Plain data: %x", plain)
-	ciphertext = gcm.Seal(plain[:0], fu.nonce, plain, tailCopy) // 存在BUG: 会把原始字节也写进文件里
-	// glog.Debugf(gctx.New(), "encrypted data: \n%s", string(ciphertext))
-
-	// glog.Debugf(gctx.New(), "[Encrypt File] Cipher data: %x", ciphertext)
+	ciphertext = gcm.Seal(nil, fu.nonce, plain, tailCopy)
 
 	name = file.Filename + ".enc"
-	savePath := gfile.Join(path, name)
+	savePath := gfile.Join(fu.encryptDir, name)
 	repeatCount := 1
 	for gfile.Exists(savePath) { // 防止重名
 		name = file.Filename + "." + gconv.String(repeatCount) + ".enc"
-		savePath = gfile.Join(path, name)
+		savePath = gfile.Join(fu.encryptDir, name)
 		repeatCount++
 	}
 
 	err = gfile.PutBytes(savePath, ciphertext)
-	return ciphertext, key, name, err
+	return ciphertext, key, savePath, err
 }
 
 func (fu *FileUtils) EncryptBytes(plaintext []byte, key []byte, autoSetZero ...bool) (ciphertext []byte, randKey []byte, err error) {
@@ -188,7 +184,7 @@ func (fu *FileUtils) DecryptBytes(bytes []byte, key []byte, autoMemclr ...bool) 
 	tailCopy := make([]byte, len(fu.filetail)) // 附加数据
 	copy(tailCopy, fu.filetail)
 	// 解密数据
-	plaintext, err = gcm.Open([]byte{}, fu.nonce, bytes, tailCopy)
+	plaintext, err = gcm.Open(nil, fu.nonce, bytes, tailCopy)
 
 	if enableMemclr {
 		Memclr(bytes) // 置空密文数据
@@ -258,16 +254,16 @@ func (fu *FileUtils) ParseEncFilename(filename string) (basename string, ext str
 	return basename, ext, true
 }
 
-func (fu *FileUtils) ItemExits(filename string) error {
-	path := gfile.Join(fu.encryptDir, filename)
-	if !gfile.Exists(path) {
-		return gerror.Newf("文件 %s 不存在", gfile.Abs(path))
+func (fu *FileUtils) ItemExits(filename string) (expectPath string, err error) {
+	expectPath = gfile.Join(fu.encryptDir, filename)
+	if !gfile.Exists(expectPath) {
+		return expectPath, gerror.Newf("文件 %s 不存在", gfile.Abs(expectPath))
 	}
-	return nil
+	return expectPath, nil
 }
 
 func (fu *FileUtils) ReadItemBytes(filename string) (bytes []byte, err error) {
-	if err = fu.ItemExits(filename); err != nil {
+	if _, err = fu.ItemExits(filename); err != nil {
 		return nil, err
 	}
 
@@ -276,7 +272,7 @@ func (fu *FileUtils) ReadItemBytes(filename string) (bytes []byte, err error) {
 	return bytes, nil
 }
 func (fu *FileUtils) ReadAndDecryptItem(filename string, key []byte) (plaintext []byte, err error) {
-	if err = fu.ItemExits(filename); err != nil {
+	if _, err = fu.ItemExits(filename); err != nil {
 		return nil, err
 	}
 	path := gfile.Join(fu.encryptDir, filename)
@@ -286,7 +282,7 @@ func (fu *FileUtils) ReadAndDecryptItem(filename string, key []byte) (plaintext 
 	return plaintext, err
 }
 func (fu *FileUtils) DecryptAndSaveItem(filename string, key []byte) (del func() error, err error) {
-	if err = fu.ItemExits(filename); err != nil {
+	if _, err = fu.ItemExits(filename); err != nil {
 		return del, err
 	}
 	basename, ext, valid := fu.ParseEncFilename(filename)

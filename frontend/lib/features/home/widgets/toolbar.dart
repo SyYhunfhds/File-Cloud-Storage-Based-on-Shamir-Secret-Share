@@ -184,7 +184,7 @@ class HomeToolbar extends ConsumerWidget {
                   padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                   child: CircleAvatar(
                     radius: 14,
-                    backgroundColor: Colors.grey.shade400,
+                    backgroundColor: colorScheme.surfaceContainerHighest,
                     child: Icon(
                       Icons.person,
                       size: 16,

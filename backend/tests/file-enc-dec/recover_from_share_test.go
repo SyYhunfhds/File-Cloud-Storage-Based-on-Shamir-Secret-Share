@@ -1,14 +1,14 @@
 package file_enc_dec
 
 import (
-	"backend/internal/config"
 	"backend/internal/logic"
-	"backend/pkg/shamir/v3"
-	"encoding/base64"
+	"crypto/sha256"
 	"fmt"
+	"runtime"
 	"testing"
 
-	"github.com/gogf/gf/v2/os/gfile"
+	"github.com/gogf/gf/v2/os/gctx"
+	"github.com/gogf/gf/v2/util/grand"
 )
 
 // 测试从前端拿到的Device Share和后端拿到的Auth Share能否用于恢复文件密钥
@@ -21,6 +21,7 @@ var (
 	fu = logic.NewFileUtils()
 )
 
+/*
 func testRecoverSecretFromShare(t *testing.T, cu *logic.CryptoUtils, fu *logic.FileUtils, base64AuthShare string, deviceShare []byte, path string) {
 	path = "【P7】僵王-泽野弘之.mp3.enc" // 文件路径
 
@@ -100,21 +101,129 @@ func TestRecoverSecretFromShare(t *testing.T) {
 	  key: "dG0@cA0/aC6{aA6(jA0*bF0`rC1+jA4+" # AES-GCM密钥 (32字节) # 不再使用
 	  key_size: 32
 	  nonce: "dV1.hD0@bD2&" # AES-GCM需要的Nonce值
-	*/
-	cu.BuildWithConfig(&config.Item{
-		ItemSeal: config.ItemSeal{
-			ShareKey: "dG0@cA0/aC6{aA6(jA0*bF0`rC1+jA4+",
-			KeySize:  32,
-			Nonce:    "dV1.hD0@bD2&",
-		},
-	})
-	fu.BuildWithConfig(&config.Item{
-		ItemSeal: config.ItemSeal{
-			ShareKey: "dG0@cA0/aC6{aA6(jA0*bF0`rC1+jA4+",
-			KeySize:  32,
-			Nonce:    "dV1.hD0@bD2&",
-		},
+*/
+/*
+cu.BuildWithConfig(&config.Item{
+ItemSeal: config.ItemSeal{
+ShareKey: "dG0@cA0/aC6{aA6(jA0*bF0`rC1+jA4+",
+KeySize:  32,
+Nonce:    "dV1.hD0@bD2&",
+},
+})
+fu.BuildWithConfig(&config.Item{
+ItemSeal: config.ItemSeal{
+ShareKey: "dG0@cA0/aC6{aA6(jA0*bF0`rC1+jA4+",
+KeySize:  32,
+Nonce:    "dV1.hD0@bD2&",
+},
+})
+
+testRecoverSecretFromShare(t, cu, fu, "", nil, "")
+}
+*/
+func TestCryptoUtilsV2(t *testing.T) {
+	cu := logic.NewCryptoUtils()
+
+	// 基础测试：验证 Auth Share 和 Recovery Share 的加解密功能
+	t.Run("basic_encrypt_decrypt", func(t *testing.T) {
+		plaintext := []byte("Hello, world!")
+		// 模拟 Auth Share 加解密
+		as, err := cu.EncryptAuthShare(gctx.New(), plaintext, false)
+		if err != nil {
+			t.Errorf("无法对认证份额进行 AES-GCM 加密: %v", err)
+			t.SkipNow()
+		}
+		decryptedAS, err := cu.DecryptAuthShare(gctx.New(), as, false)
+		if err != nil {
+			t.Errorf("无法对认证份额进行 AES-GCM 解密: %v", err)
+			t.SkipNow()
+		}
+		if string(decryptedAS) != string(plaintext) {
+			t.Errorf("认证份额的AES-GCM解密结果不正确: \n%s", decryptedAS)
+		}
+
+		// 模拟 Recovery Share 加解密
+		rs, key2, err := cu.EncryptRecoveryShare(plaintext, nil, false)
+		if err != nil {
+			t.Errorf("无法对恢复份额进行 AES-GCM 加密: %v", err)
+			t.SkipNow()
+		}
+		decryptedRS, err := cu.DecryptRecoveryShare(rs, []byte(key2), false)
+		if err != nil {
+			t.Errorf("无法对恢复份额进行 AES-GCM 解密: %v", err)
+			t.SkipNow()
+		}
+		if string(decryptedRS) != string(plaintext) {
+			t.Errorf("恢复份额的AES-GCM解密结果不正确: \n%s", decryptedRS)
+		}
 	})
 
-	testRecoverSecretFromShare(t, cu, fu, "", nil, "")
+	// 稳定性测试：循环加解密 + 频繁创建销毁大字节数组模拟内存压力
+	// 验证在内存空间频繁变动的场景下，加解密链路是否依然正确
+	t.Run("stability_with_memory_pressure", func(t *testing.T) {
+		const iterations = 10
+
+		for iter := 0; iter < iterations; iter++ {
+			// 启动内存压力 goroutine：频繁分配和释放大字节数组
+			done := make(chan struct{})
+			go func() {
+				for {
+					select {
+					case <-done:
+						return
+					default:
+						// 随机分配 1MB~8MB 的字节数组
+						size := 1<<20 + grand.N(0, 7<<20) // 1MB ~ 8MB
+						buf := grand.B(size)
+						_ = sha256.Sum256(buf)
+						// 让出时间片，增加调度随机性
+						runtime.Gosched()
+					}
+				}
+			}()
+
+			// 在内存压力下运行加解密
+			plaintext := []byte(fmt.Sprintf("test data iteration %d with random suffix %x", iter, grand.B(8)))
+			// Auth Share 加解密
+			as, err := cu.EncryptAuthShare(gctx.New(), plaintext, false)
+			if err != nil {
+				close(done)
+				t.Errorf("迭代 %d: Auth Share 加密失败: %v", iter, err)
+				return
+			}
+			decryptedAS, err := cu.DecryptAuthShare(gctx.New(), as, false)
+			if err != nil {
+				close(done)
+				t.Errorf("迭代 %d: Auth Share 解密失败: %v", iter, err)
+				return
+			}
+			if string(decryptedAS) != string(plaintext) {
+				close(done)
+				t.Errorf("迭代 %d: Auth Share 解密结果不正确", iter)
+				return
+			}
+
+			// Recovery Share 加解密
+			rs, key2, err := cu.EncryptRecoveryShare(plaintext, nil, false)
+			if err != nil {
+				close(done)
+				t.Errorf("迭代 %d: Recovery Share 加密失败: %v", iter, err)
+				return
+			}
+			decryptedRS, err := cu.DecryptRecoveryShare(rs, []byte(key2), false)
+			if err != nil {
+				close(done)
+				t.Errorf("迭代 %d: Recovery Share 解密失败: %v", iter, err)
+				return
+			}
+			if string(decryptedRS) != string(plaintext) {
+				close(done)
+				t.Errorf("迭代 %d: Recovery Share 解密结果不正确", iter)
+				return
+			}
+
+			// 关闭内存压力 goroutine，等待其退出
+			close(done)
+		}
+	})
 }

@@ -1,4 +1,3 @@
-import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../items/models/item_models.dart';
@@ -169,9 +168,24 @@ class EntryListNotifier extends Notifier<EntryListState> {
     return null;
   }
 
-  Future<void> updateItem(ItemUpdateReq req) async {
-    debugPrint('[DEBUG] updateItem called: filename=${req.filename}');
-    debugPrint('[TODO] POST /v1/protected/item/update — body=${jsonEncode(req.toJson())}');
+  Future<bool> updateItem(ItemUpdateReq req) async {
+    try {
+      final authState = ref.read(authProvider);
+      final apiConfig = ref.read(apiConfigProvider);
+
+      if (!authState.isLoggedIn || authState.token.isEmpty) return false;
+
+      final service = ItemApiService(apiConfig.baseUrl);
+      final resp = await service.updateItem(req: req, token: authState.token);
+
+      if (!resp.isSuccess) {
+        debugPrint('[ERROR] updateItem 失败: ${resp.message}');
+      }
+      return resp.isSuccess;
+    } catch (e) {
+      debugPrint('[ERROR] updateItem 异常: $e');
+      return false;
+    }
   }
 
   // ---------------------------------------------------------------------------

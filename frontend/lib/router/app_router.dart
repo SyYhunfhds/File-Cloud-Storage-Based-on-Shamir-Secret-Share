@@ -4,6 +4,7 @@ import '../features/home/views/home_page.dart';
 import '../features/upload/views/upload_page.dart';
 import '../features/share/views/share_page.dart';
 import '../features/settings/views/settings_page.dart';
+import '../features/audit/views/audit_page.dart';
 import '../features/home/widgets/sidebar_nav.dart';
 
 /// GoRouter 路由配置 — StatefulShellRoute
@@ -43,6 +44,17 @@ final appRouter = GoRouter(
               path: '/share',
               pageBuilder: (context, state) => const NoTransitionPage(
                 child: SharePage(),
+              ),
+            ),
+          ],
+        ),
+        // 审计管理
+        StatefulShellBranch(
+          routes: [
+            GoRoute(
+              path: '/audit',
+              pageBuilder: (context, state) => const NoTransitionPage(
+                child: AuditPage(),
               ),
             ),
           ],

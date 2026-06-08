@@ -1,0 +1,14 @@
+<component name="ProjectRunConfigurationManager">
+  <configuration default="false" name="文件加解密 API链路测试" type="GoTestRunConfiguration" factoryName="Go Test">
+    <module name="CryptographyDesign" />
+    <working_directory value="$PROJECT_DIR$/backend/tests/file_upload_and_download" />
+    <root_directory value="$PROJECT_DIR$/backend" />
+    <kind value="PACKAGE" />
+    <package value="backend/tests/file_upload_and_download" />
+    <directory value="$PROJECT_DIR$" />
+    <filePath value="$PROJECT_DIR$" />
+    <framework value="gotest" />
+    <pattern value="^\QTestUploadAndDownload\E$" />
+    <method v="2" />
+  </configuration>
+</component>

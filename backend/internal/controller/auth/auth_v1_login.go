@@ -303,6 +303,7 @@ func PortableLoginHandler(ac *config.ArgonConfig, cc *config.CookieConfig) ghttp
 		r.Response.WriteJson(v1.LoginRes{
 			Code:    gcode.CodeOK.Code(),
 			Message: "登录成功",
+			UserId:  user.Id,
 			Data:    signedString, // 适配桌面端
 		})
 		return

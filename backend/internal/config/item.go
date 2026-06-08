@@ -1,11 +1,28 @@
 package config
 
+import "github.com/gogf/gf/v2/util/grand"
+
 // Item
 //
 // 条目存储目录
 type Item struct {
 	ItemStorage
 	ItemSeal
+}
+
+func DefaultItemConfig() Item {
+	return Item{
+		ItemStorage: ItemStorage{
+			UploadDir:        ".",
+			EncryptedFileDir: ".",
+			UnlockedFileDir:  ".",
+		},
+		ItemSeal: ItemSeal{
+			ShareKey: grand.S(32),
+			KeySize:  32,
+			Nonce:    grand.S(12),
+		},
+	}
 }
 
 type ItemStorage struct {

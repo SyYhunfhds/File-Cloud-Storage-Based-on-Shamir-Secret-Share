@@ -2,10 +2,11 @@ package cmd
 
 import (
 	"backend/internal/config"
+	auditctrl "backend/internal/controller/audit"
 	"backend/internal/controller/auth"
-	filectrl "backend/internal/controller/file"
 	"backend/internal/controller/hello"
 	itemctrl "backend/internal/controller/item"
+	"backend/internal/controller/share"
 	userctrl "backend/internal/controller/user"
 	"backend/internal/controller/version"
 	watcherv2 "backend/internal/module/watcher/v2"
@@ -127,18 +128,21 @@ var (
 				// 注销API
 				group.GET("/auth/logout", auth.PortableLogoutHandler(&mainConfig.Server.Cookie))
 
-				// 条目提交API
-				group.POST("/item/submit", itemctrl.PortableItemSubmit(&mainConfig.Item, &mainConfig.Server.Argon))
-				// 条目下载API; 当前不支持条目Member下载条目, 因为没有为成员重新计算份额
-				group.GET("/item/download", itemctrl.PortableItemDownload(&mainConfig.Item))
-				group.POST("/item/download", itemctrl.PortableItemDownload(&mainConfig.Item))
-
-				// 其他条目管理API (不需要访问原始Request对象的)
-				// 需要额外绑定中间件
 				group.Middleware(ghttp.MiddlewareHandlerResponse)
 				group.Bind(
-					itemctrl.NewV1(),
+					itemctrl.NewV1(
+						itemctrl.WithArgonConfig(&mainConfig.Server.Argon),
+						itemctrl.WithCryptoConfig(&mainConfig.Item),
+					),
 					userctrl.NewV3(),
+					auditctrl.NewV1(
+						auditctrl.WithArgonConfig(&mainConfig.Server.Argon),
+						auditctrl.WithCryptoConfig(&mainConfig.Item),
+					),
+					share.NewV1(
+						share.WithArgonConfig(&mainConfig.Server.Argon),
+						share.WithCryptoConfig(&mainConfig.Item),
+					),
 				)
 			})
 
@@ -149,13 +153,6 @@ var (
 						userctrl.WithArgon2Config(mainConfig.Server.Argon),
 					),
 				)
-
-				// 文件路由
-				group.Group("/file", func(group *ghttp.RouterGroup) {
-					group.POST("/upload/batch", filectrl.BatchUploadHandler(
-						mainConfig.Item.UploadDir,
-					)) // 批量文件上传
-				})
 			})
 
 			s.Run()

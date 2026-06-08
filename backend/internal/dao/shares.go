@@ -20,3 +20,19 @@ var (
 )
 
 // Add your custom methods and functionality below.
+
+type ShareType = string
+
+const (
+	ShareTypeAuth     ShareType = "auth"
+	ShareTypeRecovery ShareType = "recovery"
+	ShareTypeDevice   ShareType = "device"
+)
+
+type ShareStatus = string
+
+const (
+	ShareStatusActive  ShareStatus = "active"
+	ShareStatusExpired ShareStatus = "expired"
+	ShareStatusRevoked ShareStatus = "revoked"
+)

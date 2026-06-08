@@ -95,6 +95,30 @@ class ItemApiService {
     return parseApiResponse<void>(response.body, null);
   }
 
+  // ===================== 条目更新 =====================
+
+  /// 条目更新 — `POST v1/protected/item/update`
+  ///
+  /// [req] 必须包含 `filename`（条目标识符）。
+  /// 注意：`new_filename` 暂不可用，不要传入该字段。
+  Future<ApiResponse<void>> updateItem({
+    required ItemUpdateReq req,
+    required String token,
+  }) async {
+    final url = Uri.parse('$baseUrl/v1/protected/item/update');
+
+    final response = await http.post(
+      url,
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': 'Bearer $token',
+      },
+      body: jsonEncode(req.toJson()),
+    );
+
+    return parseApiResponse<void>(response.body, null);
+  }
+
   // ===================== 条目下载 =====================
 
   /// 条目下载 — `POST v1/protected/item/download`

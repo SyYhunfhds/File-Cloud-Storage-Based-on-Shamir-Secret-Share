@@ -12,10 +12,12 @@ final shareStorageServiceProvider = Provider<ShareStorageService>((ref) {
   return ShareStorageService();
 });
 
-/// ShareService（按当前登录用户的 userId 注入）
+/// ShareService（按当前登录用户的 userId 和 userName 双标识注入）
 final shareServiceProvider = Provider<ShareService>((ref) {
   final auth = ref.watch(authProvider);
-  final userId = auth.userName.isNotEmpty ? auth.userName : 'anonymous';
+  final userId = auth.isLoggedIn
+      ? '${auth.userId}_${auth.userName}'
+      : 'anonymous_guest';
   return ShareService(
     ref.read(shareStorageServiceProvider),
     userId: userId,

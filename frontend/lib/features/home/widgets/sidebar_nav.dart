@@ -48,6 +48,11 @@ class AppSidebarNav extends StatelessWidget {
               label: Text('份额管理'),
             ),
           NavigationRailDestination(
+            icon: Icon(Icons.fact_check_outlined),
+            selectedIcon: Icon(Icons.fact_check),
+            label: Text('审计管理'),
+          ),
+          NavigationRailDestination(
             icon: Icon(Icons.settings_outlined),
             selectedIcon: Icon(Icons.settings),
             label: Text('设置'),

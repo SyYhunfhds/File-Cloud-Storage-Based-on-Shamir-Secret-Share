@@ -6,10 +6,60 @@ package item
 
 import (
 	"backend/api/item"
+	"backend/internal/config"
+	"backend/internal/logic"
 )
 
-type ControllerV1 struct{}
+type option struct {
+	config.Item
+	config.ArgonConfig
+}
 
-func NewV1() item.IItemV1 {
-	return &ControllerV1{}
+type ControllerV1 struct {
+	options *option
+
+	fu *logic.FileUtils
+	cu *logic.CryptoUtils
+	hu *logic.HashUtils
+}
+type OptionFunc func(*option)
+
+func (c *ControllerV1) injectDefaultConfig() {
+	c.options.Item = config.DefaultItemConfig()
+	c.options.ArgonConfig = config.DefaultArgonConfig()
+}
+func (c *ControllerV1) build() {
+	c.fu.BuildWithConfig(&c.options.Item)
+	c.cu.BuildWithConfig(&c.options.Item)
+	c.hu.BuildWithConfig(&c.options.ArgonConfig)
+}
+
+func NewV1(options ...OptionFunc) item.IItemV1 {
+	ctrl := &ControllerV1{
+		fu: logic.NewFileUtils(),
+		cu: logic.NewCryptoUtils(),
+		hu: logic.NewHashUtils(),
+	}
+
+	ctrl.options = &option{}
+	for _, optionFunc := range options {
+		optionFunc(ctrl.options)
+	}
+	ctrl.build()
+	return ctrl
+}
+
+func WithArgonConfig(argon *config.ArgonConfig) OptionFunc {
+	return func(o *option) {
+		if argon != nil {
+			o.ArgonConfig = *argon
+		}
+	}
+}
+func WithCryptoConfig(item *config.Item) OptionFunc {
+	return func(o *option) {
+		if item != nil {
+			o.Item = *item
+		}
+	}
 }

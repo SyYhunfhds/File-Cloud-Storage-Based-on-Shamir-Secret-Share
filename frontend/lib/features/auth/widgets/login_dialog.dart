@@ -128,7 +128,7 @@ class _LoginDialogState extends ConsumerState<LoginDialog>
           opacity: _fadeAnimation,
           child: GestureDetector(
             onTap: _close,
-            child: Container(color: Colors.black.withValues(alpha: 0.4)),
+            child: Container(color: colorScheme.scrim.withValues(alpha: 0.25)),
           ),
         ),
         // 模态框从右侧滑入

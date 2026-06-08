@@ -1,10 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/api_config_provider.dart';
 import '../../../core/auto_refresh_config_provider.dart';
+import '../../../core/theme.dart';
 import '../models/about_model.dart';
 import '../services/about_api_service.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 /// 设置页面
 ///
@@ -27,6 +28,51 @@ class SettingsPage extends ConsumerWidget {
       body: ListView(
         padding: const EdgeInsets.all(16),
         children: [
+          // 主题设置
+          Text('主题', style: Theme.of(context).textTheme.titleMedium),
+          const SizedBox(height: 8),
+          Card(
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+              child: Row(
+                children: [
+                  Icon(Icons.palette_outlined, color: colorScheme.primary),
+                  const SizedBox(width: 12),
+                  const Text('主题模式'),
+                  const Spacer(),
+                  SegmentedButton<ThemeMode>(
+                    segments: const [
+                      ButtonSegment(
+                        value: ThemeMode.light,
+                        label: Text('亮色', style: TextStyle(fontSize: 12)),
+                        icon: Icon(Icons.light_mode, size: 16),
+                      ),
+                      ButtonSegment(
+                        value: ThemeMode.dark,
+                        label: Text('暗色', style: TextStyle(fontSize: 12)),
+                        icon: Icon(Icons.dark_mode, size: 16),
+                      ),
+                      ButtonSegment(
+                        value: ThemeMode.system,
+                        label: Text('跟随系统', style: TextStyle(fontSize: 12)),
+                        icon: Icon(Icons.settings, size: 16),
+                      ),
+                    ],
+                    selected: {ref.watch(themeModeProvider)},
+                    onSelectionChanged: (selection) {
+                      ref.read(themeModeProvider.notifier).set(selection.first);
+                    },
+                    style: ButtonStyle(
+                      tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                      visualDensity: VisualDensity.compact,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+          const SizedBox(height: 24),
+
           // 当前 API 连接信息
           Text('API 连接', style: Theme.of(context).textTheme.titleMedium),
           const SizedBox(height: 8),
@@ -152,9 +198,10 @@ class _AboutDeveloperDialogState
         });
       }
     } catch (e) {
+      debugPrint('[TestConnection] $e');
       if (mounted) {
         setState(() {
-          _error = '网络请求失败: $e';
+          _error = '连接失败';
           _isLoading = false;
         });
       }

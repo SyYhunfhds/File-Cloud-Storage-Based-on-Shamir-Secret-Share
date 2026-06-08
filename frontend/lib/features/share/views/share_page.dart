@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/constants.dart';
@@ -239,32 +241,64 @@ class _SharePageState extends ConsumerState<SharePage> {
   }
 
   // ===========================================================================
-  // 删除确认
+  // 删除确认 + 3秒防呆
   // ===========================================================================
 
   Future<void> _confirmDelete(int itemId) async {
+    final countdown = ValueNotifier<int>(3);
+    Timer? timer;
+
     final confirmed = await showDialog<bool>(
       context: context,
-      builder: (ctx) => AlertDialog(
-        title: const Text('确认删除'),
-        content: const Text(
-            '删除后份额将无法恢复。如需下载对应条目，请确保已妥善保存 Recovery Code。'),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(ctx).pop(false),
-            child: const Text('取消'),
+      builder: (ctx) {
+        timer = Timer.periodic(const Duration(seconds: 1), (_) {
+          if (countdown.value > 0) {
+            countdown.value--;
+          } else {
+            timer?.cancel();
+          }
+        });
+
+        return PopScope(
+          canPop: true,
+          onPopInvokedWithResult: (_, __) => timer?.cancel(),
+          child: AlertDialog(
+            title: const Text('确认删除'),
+            content: const Text(
+                '删除后份额将无法恢复。如需下载对应条目，请确保已妥善保存 Recovery Code。'),
+            actions: [
+              TextButton(
+                onPressed: () {
+                  timer?.cancel();
+                  Navigator.of(ctx).pop(false);
+                },
+                child: const Text('取消'),
+              ),
+              ValueListenableBuilder<int>(
+                valueListenable: countdown,
+                builder: (ctx, cd, _) => TextButton(
+                  onPressed: cd > 0
+                      ? null
+                      : () {
+                          timer?.cancel();
+                          Navigator.of(ctx).pop(true);
+                        },
+                  style: cd > 0
+                      ? null
+                      : TextButton.styleFrom(
+                          foregroundColor:
+                              Theme.of(context).colorScheme.error,
+                        ),
+                  child: Text(cd > 0 ? '删除 ($cd)' : '确认删除'),
+                ),
+              ),
+            ],
           ),
-          TextButton(
-            onPressed: () => Navigator.of(ctx).pop(true),
-            style: TextButton.styleFrom(
-              foregroundColor: Theme.of(context).colorScheme.error,
-            ),
-            child: const Text('删除'),
-          ),
-        ],
-      ),
+        );
+      },
     );
 
+    timer?.cancel();
     if (confirmed == true) {
       await ref.read(shareListProvider.notifier).delete(itemId);
       if (mounted) {
