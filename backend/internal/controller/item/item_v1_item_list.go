@@ -31,7 +31,8 @@ order by uploaded_at desc
 const countOnlyBelongsToUser string = `
 select count(1) as total from public.items
                 left join public.item_members im on items.id = im.item_id
-                where owner_id = ? OR (im.member_id = ? and im.status = 1 and im.joined_at is not null)
+                where owner_id = ? 
+                   OR (im.member_id = ? and im.status = 1 and im.joined_at is not null)
 `
 const queryAll string = `
 select distinct 
@@ -89,7 +90,7 @@ func (c *ControllerV1) ItemList(ctx context.Context, req *v1.ItemListReq) (res *
 
 OnlyBelongsToUser:
 	err = dao.Items.Ctx(ctx). // 搜索自己拥有的和自己允许拥有的
-					Raw(queryOnlyBelongsToUser, ac.Id, ac.Privilege).
+					Raw(queryOnlyBelongsToUser, ac.Id, ac.Id).
 					Offset(offset).
 					Limit(limit).
 					Scan(&res.Items)

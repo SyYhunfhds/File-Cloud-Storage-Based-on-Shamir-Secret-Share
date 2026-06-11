@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../items/models/item_models.dart';
+import '../../auth/providers/auth_provider.dart';
+import '../../auth/widgets/login_dialog.dart';
 import '../providers/entry_provider.dart';
 import '../widgets/toolbar.dart';
 import '../widgets/entry_table.dart';
@@ -28,6 +30,38 @@ class _HomePageState extends ConsumerState<HomePage> {
     Future.microtask(() {
       ref.read(entryListProvider.notifier).fetchAllEntries();
     });
+    WidgetsBinding.instance.addPostFrameCallback((_) => _tryQuickLogin());
+  }
+
+  Future<void> _tryQuickLogin() async {
+    final notifier = ref.read(authProvider.notifier);
+    final success = await notifier.quickLogin();
+    if (!mounted) return;
+    if (!success) {
+      final errorMsg = ref.read(authProvider).errorMessage;
+      // 无缓存或其他非错误情况 → 不弹窗
+      if (errorMsg == null || errorMsg.isEmpty) return;
+      await showDialog(
+        context: context,
+        useRootNavigator: true,
+        builder: (_) => AlertDialog(
+          title: const Text('快速登录失败'),
+          content: Text(errorMsg),
+          actions: [
+            TextButton(
+              onPressed: () =>
+                  Navigator.of(context, rootNavigator: true).pop(),
+              child: const Text('确定'),
+            ),
+          ],
+        ),
+      );
+      if (!mounted) return;
+      showDialog(
+          context: context,
+          useRootNavigator: true,
+          builder: (_) => const LoginDialog());
+    }
   }
 
   @override

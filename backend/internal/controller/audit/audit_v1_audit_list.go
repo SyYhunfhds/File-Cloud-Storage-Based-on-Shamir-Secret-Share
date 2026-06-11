@@ -35,7 +35,7 @@ from public.items
          left join public.item_members im on items.id = im.item_id
          left join public.users u on im.member_id = u.id
          left join public.shares s on items.id = s.item_id
-where owner_id = ? and im.member_id != ? and s.share_type = 'auth' and im.status in (?)
+where items.owner_id = ? and im.member_id != ? and s.share_type = 'auth' and im.status in (?)
 group by public.items.id, filename, im.id
 order by array_agg(im.updated_at) desc
 `
@@ -45,7 +45,7 @@ from public.items
          left join public.item_members im on items.id = im.item_id
          left join public.users u on im.member_id = u.id
          left join public.shares s on items.id = s.item_id
-where owner_id = ? and im.member_id != ? and s.share_type = 'auth' and im.status in (?)`
+where items.owner_id = ? and im.member_id != ? and s.share_type = 'auth' and im.status in (?)`
 
 func (c *ControllerV1) AuditList(ctx context.Context, req *v1.AuditListReq) (res *v1.AuditListRes, err error) {
 	ctx, span := gtrace.NewSpan(ctx, "AuditListHandler")

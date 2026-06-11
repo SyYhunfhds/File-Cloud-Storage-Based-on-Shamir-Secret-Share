@@ -10,6 +10,7 @@ import (
 	"context"
 	"net/http"
 
+	"github.com/gogf/gf/v2/encoding/gbase64"
 	"github.com/gogf/gf/v2/errors/gcode"
 	"github.com/gogf/gf/v2/errors/gerror"
 	"github.com/gogf/gf/v2/net/ghttp"
@@ -22,6 +23,7 @@ import (
 type UserAuthShare struct {
 	ItemId   int
 	Filename string
+	Savename string
 
 	IsMemberValid bool // 如果是被允许查看的Member
 	BelongToUser  bool // 如果是所有者
@@ -68,7 +70,7 @@ func (c *ControllerV1) ItemDownload(ctx context.Context, req *v1.ItemDownloadReq
 select
     items.id as item_id,
     numeric_eq(owner_id, ?) as belong_to_user,
-    filename
+    savename
     from public.items where id = ?
 `, ac.Id, req.ItemId).Scan(&sqlV)
 	if err != nil {
@@ -143,13 +145,10 @@ from public.shares where item_id = ? and share_type = ? and status = ? and user_
 		attribute.String("file.key.device_share.base64encode", req.DeviceShare), // device share本来就已经是base64编码过一次了
 	)
 
-	// spew.Dump(sqlV)
-	// 对AuthShare进行解码
 	// 先AES-GCM解密再Base64+JSON解码
+	// decryptedAuthShare, err := c.cu.DecryptAuthShare(ctx, []byte(sqlV.AuthShare), false)
 	/*
-		// TODO: 临时解除加解密流程
-		sqlV.AuthShare, err = cu.DecryptAuthShare(ctx, sqlV.AuthShare, false)
-			if err != nil {
+		if err != nil {
 				span.SetStatus(codes.Error, "检测到服务端Auth份额无法进行GCM解密")
 				span.SetAttributes(attribute.String("share.decode.error", err.Error()))
 
@@ -193,12 +192,12 @@ from public.shares where item_id = ? and share_type = ? and status = ? and user_
 	key := shamir.Recover([]shamir.Share{
 		sqlV.decodedAuthShare, deviceShare,
 	})
-	_ = key
+	span.SetAttributes(attribute.String("file.key.recovery.base64encode", gbase64.EncodeToString(key)))
 	defer logic.Memclr(key) // 置空密钥
 
 	// 读取加密文件、解密并保存到临时目录中
 	span.AddEvent("读取加密文件、解密并保存到临时目录中")
-	del, err := c.fu.DecryptAndSaveItem(gfile.Basename(sqlV.Filename), key)
+	del, err := c.fu.DecryptAndSaveItem(gfile.Basename(sqlV.Savename), key)
 	defer del() // 删除临时文件
 	if err != nil {
 		span.SetStatus(codes.Error, "文件解密失败")
@@ -214,7 +213,7 @@ from public.shares where item_id = ? and share_type = ? and status = ? and user_
 	// 文件下载前会覆盖缓冲区
 	// r.Response.ServeFileDownload(gfile.Join("business/item/unlocked", "plain.txt"))
 	span.AddEvent("开始传输文件字节")
-	err = c.fu.ItemDownload(r.Response, sqlV.Filename)
+	err = c.fu.ItemDownload(r.Response, sqlV.Savename)
 	if (r.Response.BufferLength() == 9 && r.Response.BufferString() == "Not Found") || err != nil {
 		span.SetStatus(codes.Error, "文件下载失败, 找不到临时解密后的文件")
 		span.SetAttributes(attribute.String("file.download.error", err.Error()))

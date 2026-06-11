@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/api_config_provider.dart';
 import '../../../core/auto_refresh_config_provider.dart';
 import '../../../core/theme.dart';
+import '../../auth/providers/account_cache_provider.dart';
 import '../models/about_model.dart';
 import '../services/about_api_service.dart';
 
@@ -71,6 +72,10 @@ class SettingsPage extends ConsumerWidget {
               ),
             ),
           ),
+          const SizedBox(height: 24),
+
+          // 账号管理
+          _buildAccountSection(context, ref),
           const SizedBox(height: 24),
 
           // 当前 API 连接信息
@@ -150,6 +155,113 @@ class SettingsPage extends ConsumerWidget {
     );
   }
 }
+
+/// 账号管理区块
+Widget _buildAccountSection(BuildContext context, WidgetRef ref) {
+  final colorScheme = Theme.of(context).colorScheme;
+  final accountsAsync = ref.watch(accountCacheProvider);
+
+  return Column(
+    crossAxisAlignment: CrossAxisAlignment.start,
+    children: [
+      Text('账号管理', style: Theme.of(context).textTheme.titleMedium),
+      const SizedBox(height: 8),
+      Card(
+        child: accountsAsync.when(
+          data: (accounts) {
+            if (accounts.isEmpty) {
+              return const Padding(
+                padding: EdgeInsets.all(24),
+                child: Center(
+                  child: Text('暂无缓存账号',
+                      style: TextStyle(color: Colors.grey)),
+                ),
+              );
+            }
+            return Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                ...accounts.map((a) => ListTile(
+                      leading: Icon(Icons.person, color: colorScheme.primary),
+                      title: Text(a.username),
+                      subtitle: Text(
+                          '上次登录: ${a.lastUsedAt.year}-${_pad(a.lastUsedAt.month)}-${_pad(a.lastUsedAt.day)}'),
+                      trailing: IconButton(
+                        icon: const Icon(Icons.delete_outline, size: 20),
+                        onPressed: () => _confirmDeleteAccount(
+                            context, ref, a.username),
+                      ),
+                    )),
+                const Divider(height: 1),
+                Align(
+                  alignment: Alignment.centerRight,
+                  child: TextButton.icon(
+                    onPressed: () => _confirmClearAll(context, ref),
+                    icon: const Icon(Icons.delete_sweep, size: 18),
+                    label: const Text('清空全部'),
+                  ),
+                ),
+              ],
+            );
+          },
+          loading: () => const Padding(
+            padding: EdgeInsets.all(24),
+            child: Center(child: CircularProgressIndicator(strokeWidth: 2)),
+          ),
+          error: (e, _) => Padding(
+            padding: const EdgeInsets.all(24),
+            child: Center(child: Text('加载失败: $e')),
+          ),
+        ),
+      ),
+    ],
+  );
+}
+
+void _confirmDeleteAccount(
+    BuildContext context, WidgetRef ref, String username) async {
+  final confirmed = await showDialog<bool>(
+    context: context,
+    builder: (ctx) => AlertDialog(
+      title: const Text('删除缓存账号'),
+      content: Text('确定要删除「$username」的缓存数据吗？'),
+      actions: [
+        TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('取消')),
+        TextButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            child: const Text('删除')),
+      ],
+    ),
+  );
+  if (confirmed == true) {
+    ref.read(accountCacheProvider.notifier).deleteAccount(username);
+  }
+}
+
+void _confirmClearAll(BuildContext context, WidgetRef ref) async {
+  final confirmed = await showDialog<bool>(
+    context: context,
+    builder: (ctx) => AlertDialog(
+      title: const Text('清空所有缓存'),
+      content: const Text('确定要清空所有缓存的账号数据吗？'),
+      actions: [
+        TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('取消')),
+        TextButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            child: const Text('清空')),
+      ],
+    ),
+  );
+  if (confirmed == true) {
+    ref.read(accountCacheProvider.notifier).deleteAll();
+  }
+}
+
+String _pad(int n) => n.toString().padLeft(2, '0');
 
 /// 弹出"关于开发者"对话框
 void _showAboutDialog(BuildContext context, WidgetRef ref) {

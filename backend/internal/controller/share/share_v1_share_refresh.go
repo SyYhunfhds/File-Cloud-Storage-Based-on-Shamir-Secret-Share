@@ -6,6 +6,8 @@ import (
 	"backend/internal/logic"
 	"backend/pkg/shamir/v3"
 	"context"
+	"fmt"
+	"math/rand/v2"
 
 	"github.com/gogf/gf/v2/database/gdb"
 	"github.com/gogf/gf/v2/encoding/gbase64"
@@ -13,7 +15,6 @@ import (
 	"github.com/gogf/gf/v2/errors/gerror"
 	"github.com/gogf/gf/v2/frame/g"
 	"github.com/gogf/gf/v2/net/gtrace"
-	"github.com/gogf/gf/v2/os/gctx"
 	"github.com/gogf/gf/v2/os/gtime"
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/codes"
@@ -34,6 +35,7 @@ type OperationTempValue struct {
 	AuthShare        shamir.Share
 
 	FileKey     []byte   // 文件密钥 (还原得到)
+	Usernames   []string // 用于调试 审计成员的用户名
 	UserIds     []int    // 用于对照解析份额
 	Coordinates []uint32 // 用户坐标, 用于密钥重建和再分发
 }
@@ -41,26 +43,27 @@ type OperationTempValue struct {
 // 参数分别为 用户ID和条目ID
 const queryRecoveryCodeHash = `
 select
-    s.recovery_share as encoded_recovery_share,
-    s.recovery_code_hash
+    s.share_base64 as encoded_recovery_share,
+    s.code_hash as recovery_code_hash
 from public.items
 left join public.shares s on items.id = s.item_id
-where owner_id = ? and item_id = ?
+where items.owner_id = ? and item_id = ? and s.share_type = 'recovery'
 `
 
 // 参数分别为 用户ID和条目ID
 const queryAuthShare = `select
     items.owner_id = ? as is_owner,
-    s.auth_share as encoded_auth_share
+    s.share_base64 as encoded_auth_share
 from public.items
 left join public.shares s on items.id = s.item_id
-where item_id = ?`
+where item_id = ? and s.share_type = 'auth'`
 
 // 检索用户坐标, 参数分别为当前用户的ID、当前用户ID和条目ID
 //
 // 分别用于防止水平越权、避免检索到用户自己的坐标以及防止给其他用户分配到未公开项目的份额
 const queryUserCoordinates = `select
-    distinct (username), users.id as user_ids, share_coor as coordinates
+    array_agg(distinct (username)) as usernames,
+    array_agg(users.id) as user_ids, array_agg(share_coor) as coordinates
 from public.users
 left join public.item_members im on users.id = im.member_id
 left join public.items i on im.item_id = i.id
@@ -133,15 +136,20 @@ func (c *ControllerV1) ShareRefresh(ctx context.Context, req *v1.ShareRefreshReq
 		res.IsRecoveryCodeReGenerated = false // 恢复码有效, 所以不会修改恢复码
 
 		_span.AddEvent("使用Recovery Code对Recovery Share进行解密")
-		temp.EncodedUserShare, err = c.cu.DecryptRecoveryShare(temp.EncodedRecoveryShare, []byte(req.RecoveryCode), true)
-		if err != nil {
-			_span.SetStatus(codes.Error, "Recovery Share解密失败")
-			_span.SetAttributes(attribute.String("file.key.recovery_share.decryption.error", err.Error()))
+		/*
+			temp.EncodedUserShare, err = c.cu.ChainBeforeDecrypt(
+					ctx, []byte(req.RecoveryCode), temp.EncodedRecoveryShare,
+				)
+			if err != nil {
+					_span.SetStatus(codes.Error, "Recovery Share解密失败")
+					_span.SetAttributes(attribute.String("file.key.recovery_share.decryption.error", err.Error()))
 
-			err = gerror.NewCode(gcode.CodeSecurityReason, "Recovery Share可能已失效, 这不是用户的问题")
-			_span.End()
-			return
-		}
+					err = gerror.NewCode(gcode.CodeSecurityReason, "Recovery Share可能已失效, 这不是用户的问题")
+					_span.End()
+					return
+				}
+		*/
+		temp.EncodedUserShare = temp.EncodedRecoveryShare // 现在RS也是Base64编码的而已
 		_span.End()
 	}
 	if req.DeviceShare == "" && req.RecoveryCode == "" {
@@ -179,41 +187,6 @@ func (c *ControllerV1) ShareRefresh(ctx context.Context, req *v1.ShareRefreshReq
 	}
 	_span.End()
 
-	/*
-		span.AddEvent("解密Auth Share")
-			temp.EncodedAuthShare, err = c.cu.DecryptAuthShare(gctx.New(), temp.EncodedAuthShare, true) // 使用服务器主密钥解密
-			if err != nil {
-				span.SetStatus(codes.Error, "Auth Share解密失败")
-				span.SetAttributes(attribute.String("file.key.auth_share.decryption.error", err.Error()))
-
-				err = gerror.NewCode(gcode.CodeSecurityReason, "Auth Share可能已失效, 请联系管理员")
-				c.sendAndFlush(response, Msg{Progress: 45, Message: "Auth Share可能已失效"})
-				return
-			}
-	*/
-
-	// 省略部分逻辑
-	span.AddEvent("反序列化Device Share")
-	temp.UserShare, err = shamir.ShareFromBase64Bytes(temp.EncodedUserShare)
-	if err != nil {
-		span.SetStatus(codes.Error, "Device Share反序列化失败")
-		span.SetAttributes(attribute.String("file.key.device_share.deserialization.error", err.Error()))
-
-		err = gerror.NewCode(gcode.CodeInvalidRequest, "Device Share无效")
-		return
-	}
-	logic.Memclr(temp.EncodedUserShare) // 置空用户份额字节
-	span.AddEvent("反序列化Auth Share")
-	temp.AuthShare, err = shamir.ShareFromBase64Bytes(temp.EncodedAuthShare)
-	if err != nil {
-		span.SetStatus(codes.Error, "Auth Share反序列化失败")
-		span.SetAttributes(attribute.String("file.key.auth_share.deserialization.error", err.Error()))
-
-		err = gerror.NewCode(gcode.CodeInvalidRequest, "Auth Share无效")
-		return
-	}
-	logic.Memclr(temp.EncodedAuthShare) // 置空授权份额字节
-
 	msg = "查找其他用户的坐标, 用于计算份额"
 	span.AddEvent(msg)
 	c.sendAndFlush(response, Msg{Progress: 50, Message: msg})
@@ -225,74 +198,127 @@ func (c *ControllerV1) ShareRefresh(ctx context.Context, req *v1.ShareRefreshReq
 		_span.SetStatus(codes.Error, "无法获取其他用户的坐标")
 		_span.SetAttributes(attribute.String("db.query.error", err.Error()))
 
-		// err = gerror.NewCode(gcode.CodeInternalError, "无法获取其他用户的信息")
-		// _span.End()
-		// return
 	}
 	_span.End()
+	span.SetAttributes(attribute.StringSlice("key.share.re_split.members", temp.Usernames))
 
 	span.AddEvent("使用Auth Share和Device Share重建密钥")
-	// 这里与itemDownload的处理不同, 这里有Unpad环节
-	temp.FileKey = c.cu.RecoverShare(temp.AuthShare, temp.UserShare) // 密钥重建
+	temp.EncodedUserShare, _ = gbase64.Decode(temp.EncodedUserShare)
+	temp.EncodedAuthShare, _ = gbase64.Decode(temp.EncodedAuthShare)
+	temp.FileKey, err = c.cu.RecoverFromJson(ctx,
+		temp.EncodedUserShare,
+		temp.EncodedAuthShare,
+	) // 密钥重建
+	if err != nil {
+		span.SetStatus(codes.Error, "密钥重建失败")
+		span.SetAttributes(attribute.String("file.key.recovery.error", err.Error()))
+
+		c.sendAndFlush(response, Msg{Progress: 55, Message: "密钥重建失败"})
+		err = gerror.NewCode(gcode.CodeSecurityReason, "密钥重建失败")
+		return
+	}
 	c.sendAndFlush(response, Msg{Progress: 60, Message: "密钥重建结束"})
 
+	coordinates := make([]uint32, 0, len(temp.Coordinates)+3)
+	coordinates = append(coordinates, ac.Coordinate)              // 用户主坐标
+	coordinates = append(coordinates, rand.Uint32N(shamir.Prime)) // 用户随机坐标, 用于生成新的Auth Share
+	coordinates = append(coordinates, rand.Uint32N(shamir.Prime)) // 用户随机坐标, 用于生成新的Recovery Share
+	coordinates = append(coordinates, temp.Coordinates...)        // 其他用户的坐标
+
 	c.sendAndFlush(response, Msg{Progress: 70, Message: "重新计算份额"})
-	ds, as, rs, otherShares, err := c.cu.ResplitShare(temp.FileKey, ac.Coordinate, temp.Coordinates)
+	shares, err := c.cu.SplitToJson(
+		ctx, temp.FileKey, coordinates...,
+	)
+	var (
+		ds          = shares[0]
+		as          = shares[1]
+		rs          = shares[2]
+		otherShares = shares[3:]
+	)
 	defer cleanup(temp.FileKey, otherShares, as, rs)
 	if err != nil {
-		span.SetStatus(codes.Error, "份额重建失败")
+		span.SetStatus(codes.Error, "份额重新计算失败")
 		span.SetAttributes(attribute.String("file.key.re_split.error", err.Error()))
 
 		c.sendMsgAndFlush(response, "无法重新计算份额")
 		err = gerror.NewCode(gcode.CodeInternalError, "无法重新计算份额")
 		return
 	}
-	span.AddEvent("加密份额并存入数据库")
-	encAS, err := c.cu.EncryptAuthShare(gctx.New(), as)
-	encRS, code, err := c.cu.EncryptRecoveryShare(rs, nil)
-	if err != nil {
-		span.SetStatus(codes.Error, "份额加密失败")
-		span.SetAttributes(attribute.String("file.key.share.encryption.error", err.Error()))
+	/*
+		// TODO: 启用份额加密
+		span.AddEvent("加密份额并存入数据库")
+		encAS, err := c.cu.EncryptAuthShare(ctx, as)
+			encRS, code, err := c.cu.EncryptRecoveryShare(rs, nil)
+			if err != nil {
+				span.SetStatus(codes.Error, "份额加密失败")
+				span.SetAttributes(attribute.String("file.key.share.encryption.error", err.Error()))
 
-		c.sendAndFlush(response, Msg{Progress: 75, Message: "份额加密失败"})
-		err = gerror.NewCode(gcode.CodeInternalError, "份额加密失败")
-		return
-	}
+				c.sendAndFlush(response, Msg{Progress: 75, Message: "份额加密失败"})
+				err = gerror.NewCode(gcode.CodeInternalError, "份额加密失败")
+				return
+			}
+	*/
+	code := c.cu.StringKey() // Recovery Code
 	codeHash, _ := c.hu.HashGen(code)
-	_ctx, _span = gtrace.NewSpan(ctx, "将Auth Share和Recovery Share存入数据库")
-	err = g.DB().Ctx(_ctx).Transaction(_ctx, func(ctx context.Context, tx gdb.TX) error {
+	span.AddEvent("将Auth Share、Recovery Share以及其他用户的Device Share存入数据库")
+	err = g.DB().Transaction(ctx, func(ctx context.Context, tx gdb.TX) error {
 		// Auth Share与Recovery Share入库
-		_, err = dao.Shares.Ctx(_ctx).Data(g.Map{
-			"item_id":            req.ItemId,
-			"user_id":            ac.Id,
-			"share_type":         "auth",
-			"auth_share":         encAS,
-			"recovery_share":     encRS,
-			"recovery_code_hash": codeHash,
+		_ctx, _span = gtrace.NewSpan(_ctx, "将Auth Share和Recovery Share存入数据库")
+		_, err = dao.Shares.Ctx(_ctx).Data(g.List{
+			g.Map{
+				"item_id":      req.ItemId,
+				"user_id":      ac.Id,
+				"owner_id":     ac.Id,
+				"owner":        ac.Username,
+				"share_type":   dao.ShareTypeAuth,
+				"share_base64": gbase64.EncodeToString(as),
+				"status":       dao.ShareStatusActive,
 
-			"updated_at": gtime.Now(),
-		}).OnConflict("item_id", "user_id", "share_type").Save()
+				"updated_at": gtime.Now(),
+			},
+			g.Map{
+				"item_id":      req.ItemId,
+				"user_id":      ac.Id,
+				"owner_id":     ac.Id,
+				"owner":        ac.Username,
+				"share_type":   dao.ShareTypeRecovery,
+				"share_base64": gbase64.EncodeToString(rs),
+				"code_hash":    codeHash,
+				"status":       dao.ShareStatusActive,
+
+				"updated_at": gtime.Now(),
+			},
+		}).OnConflict("item_id", "user_id", "share_type", "status").Save()
 		if err != nil {
 			return err
 		}
 
 		// 其他份额入库
+		_span.AddEvent("缓存审计成员的Device Share")
 		if len(otherShares) == 0 {
+			_span.AddEvent("没有可被备份的Device Share, 提前退出事务")
 			return nil
 		}
 
 		var updateList = make(g.List, 0, len(otherShares))
+		_span.AddEvent(fmt.Sprintf("共有%d位成员的Device Share需要缓存", len(otherShares)))
 		for i, share := range otherShares {
 			updateList = append(updateList, g.Map{
-				"user_id":      temp.UserIds[i],
-				"item_id":      req.ItemId,
-				"share_type":   "device",
+				"user_id":      temp.UserIds[i],     // 成员ID
+				"item_id":      req.ItemId,          // 条目ID
+				"owner_id":     ac.Id,               // 条目所有者 (不是 该份额的所有者)ID
+				"owner":        ac.Username,         // 条目所有者的用户名
+				"share_type":   dao.ShareTypeDevice, // 用户需要尽快登录上来
 				"share_base64": gbase64.EncodeToString(share),
+				"status":       dao.ShareStatusActive,
 
-				"updated_at": gtime.Now(),
+				"updated_at": gtime.Now(), // 手动刷新
 			})
 		}
-		_, err = dao.Shares.Ctx(_ctx).Data(updateList).Save()
+		_, err = dao.Shares.Ctx(_ctx).
+			Data(updateList).
+			OnConflict("item_id", "user_id", "share_type", "status").
+			Save()
 		if err != nil {
 			return err
 		}
@@ -311,10 +337,10 @@ func (c *ControllerV1) ShareRefresh(ctx context.Context, req *v1.ShareRefreshReq
 	c.sendAndFlush(response, Msg{Progress: 90, Message: "份额入库完毕"})
 
 	msg = "请求处理完毕"
-	res.DeviceShare = ds
+	res.DeviceShare = gbase64.EncodeToString(ds)
 	res.RecoveryCode = code
-	res.RecoveryShare = gbase64.EncodeToString(encRS)
 	span.SetStatus(codes.Ok, msg)
+	span.AddEvent("请求处理成功")
 	c.sendAndFlush(response, Msg{Progress: 100, Message: msg, Data: res}) // 响应在这里
 
 	return nil, nil

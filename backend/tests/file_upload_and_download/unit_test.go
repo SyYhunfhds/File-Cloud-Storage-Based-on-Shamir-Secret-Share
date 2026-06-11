@@ -2,6 +2,7 @@ package file_upload_and_download
 
 import (
 	"archive/zip"
+	sharev1 "backend/api/share/v1"
 	"backend/internal/model/entity"
 	"context"
 	"crypto/rand"
@@ -9,12 +10,14 @@ import (
 	"hash/crc32"
 	"io"
 	"runtime"
+	"strings"
 	"testing"
 
 	authv1 "backend/api/auth/v1"
 	itemv1 "backend/api/item/v1"
 
 	"github.com/brianvoe/gofakeit/v7"
+	"github.com/davecgh/go-spew/spew"
 	"github.com/gogf/gf/v2/encoding/ghtml"
 	"github.com/gogf/gf/v2/encoding/gjson"
 	"github.com/gogf/gf/v2/frame/g"
@@ -297,4 +300,246 @@ func getContentCRC32(content []byte) (uint32, error) {
 		return 0, err
 	}
 	return hasher.Sum32(), nil
+}
+
+type GenericResponse struct {
+	Code    int    `json:"code"`
+	Message string `json:"message"`
+	Data    string `json:"data"`
+}
+
+var (
+	registerAPI = fmt.Sprintf("%s://%s/%s", scheme, server, register)
+	loginAPI    = fmt.Sprintf("%s://%s/%s", scheme, server, login)
+
+	uploadAPI     = fmt.Sprintf("%s://%s/%s", scheme, server, upload)
+	downloadAPI   = fmt.Sprintf("%s://%s/%s", scheme, server, download)
+	updateAPI     = fmt.Sprintf("%s://%s/%s", scheme, server, update)
+	viewSubmitAPI = fmt.Sprintf("%s://%s/%s", scheme, server, view)
+	passAllAPI    = fmt.Sprintf("%s://%s/%s", scheme, server, passAll)
+
+	refreshAPI = fmt.Sprintf("%s://%s/%s", scheme, server, refresh)
+)
+
+func registerAndLogin(ctx context.Context, u entity.Users) (res authv1.LoginRes, err error) {
+	var (
+		gr = GenericResponse{}
+		rs string
+		r  *gclient.Response
+	)
+	// 注册用户
+	r, err = g.Client().Post(ctx, registerAPI, g.Map{
+		"username": u.Username,
+		"password": u.Password,
+		"email":    u.Email,
+	})
+	if err != nil {
+		return
+	}
+	if r != nil {
+		_ = gjson.DecodeTo(r.ReadAll(), &gr)
+		if gr.Code != 0 {
+			err = fmt.Errorf("register failed: %s", gr.Message)
+			return res, err
+		}
+		_ = r.Close()
+	}
+
+	// 登录用户
+	r, err = g.Client().Post(ctx, loginAPI, g.Map{
+		"username": u.Username,
+		"password": u.Password,
+	})
+	if err != nil {
+		return
+	}
+	if r != nil {
+		rs = r.ReadAllString()
+		_ = r.Close()
+	}
+	_ = gjson.DecodeTo(rs, &res)
+	if res.Code != 0 {
+		err = fmt.Errorf("login failed: %s", res.Message)
+		return res, err
+	}
+	_ = gjson.DecodeTo(rs, &res)
+
+	return res, nil
+}
+func uploadFile(ctx context.Context, claim authv1.LoginRes, generate fileGenFunc) (res itemv1.ItemSubmitRes, checksum uint32, err error) {
+	filename, content, _ := generate()
+	cleanup, path, _ := saveTempFile(filename, content)
+	checksum = crc32.ChecksumIEEE(content)
+	defer cleanup()
+
+	var (
+		r  *gclient.Response
+		rs string
+		gr GenericResponse
+	)
+	r, err = g.Client().
+		SetHeader("Authorization", claim.Data).
+		Post(ctx, uploadAPI, "item=@file:"+path)
+	if err != nil {
+		return res, 0, err
+	}
+	if r != nil {
+		rs = r.ReadAllString()
+		_ = r.Close()
+	}
+	_ = gjson.DecodeTo(r.ReadAll(), &gr)
+	if gr.Code != 0 {
+		err = fmt.Errorf("upload failed: %s", gr.Message)
+		return res, 0, err
+	}
+	_ = gjson.DecodeTo(rs, &res)
+
+	return res, checksum, nil
+}
+func shareRefresh(ctx context.Context, claim authv1.LoginRes, privacy itemv1.ItemSubmitRes) (res sharev1.ShareRefreshRes, err error) {
+	var (
+		r  *gclient.Response
+		rs []string
+		sr StreamProgress
+	)
+	r, err = g.Client().
+		SetHeader("Authorization", claim.Data).
+		Post(ctx, refreshAPI, g.Map{
+			"item_id":       privacy.Data.ItemId,
+			"recovery_code": privacy.Data.RecoveryCode,
+			"share":         privacy.Data.Share,
+		})
+	if err != nil {
+		return res, err
+	}
+	if r != nil {
+		rs = strings.Split(r.ReadAllString(), "\n\n")
+		_ = r.Close()
+	}
+	for _, s := range rs {
+		_ = gjson.DecodeTo(s, &sr)
+		// spew.Dump(sr)
+	}
+	if sr.Progress != 100 {
+		return res, fmt.Errorf("refresh failed: %s", sr.Message)
+	}
+
+	return sr.Payload, nil
+}
+
+type StreamProgress struct {
+	Progress int                     `json:"progress"`
+	Message  string                  `json:"message"`
+	Payload  sharev1.ShareRefreshRes `json:"data"`
+}
+
+// 测试单用户份额强制刷新
+// 直接刷新没有问题, 因此API检测不到有需要更新的审计用户就不会真正更新份额
+// 有额外用户加入后文件下载依然正常, 并且Auth Share份额确实不一样
+func TestShareRefresh(t *testing.T) {
+	var (
+		u1 = randUserInfo()
+
+		gr = GenericResponse{}
+		// rs      []string
+		oners   string
+		content []byte
+		r       *gclient.Response
+		// sr      = StreamProgress{}
+		err error
+	)
+	_ = gr
+	_ = oners
+	// 登录
+	claim1, err := registerAndLogin(gctx.New(), u1)
+	if err != nil {
+		t.Errorf("[%s@%s]登录失败", u1.Username, u1.Password)
+	}
+
+	// (用户1)上传文件拿到至少一个份额和code
+	privacy, checksum, err := uploadFile(gctx.New(), claim1, randHTMLFile)
+	if err != nil {
+		t.Errorf("[%s@%s]文件上传失败", u1.Username, u1.Password)
+		return
+	}
+	// (用户1)把这个条目改成公开的
+	r, _ = g.Client().SetHeader("Authorization", claim1.Data).
+		Post(gctx.New(), updateAPI, g.Map{
+			"item_id":           privacy.Data.ItemId,
+			"new_filename":      grand.S(6) + ".txt",
+			"minimum_privilege": 1,
+			"enable_public":     true,
+		})
+	if r != nil {
+		oners = r.ReadAllString()
+		_ = r.Close()
+	}
+	// println(oners)
+
+	// (用户2)注册并登录, 申请查看用户1的条目
+	var (
+		u2        = randUserInfo()
+		claim2, _ = registerAndLogin(gctx.New(), u2)
+	)
+	r, _ = g.Client().SetHeader("Authorization", claim2.Data).
+		Post(gctx.New(), viewSubmitAPI, g.Map{
+			"requirements": g.List{
+				g.Map{
+					"item_id":   privacy.Data.ItemId,
+					"operation": "view",
+				},
+			},
+		})
+	if r != nil {
+		oners = r.ReadAllString()
+		_ = r.Close()
+	}
+	// println(oners)
+
+	// (用户1) 确认用户2的申请/全部确认
+	r, _ = g.Client().SetHeader("Authorization", claim1.Data).
+		Get(gctx.New(), passAllAPI, nil)
+	if r != nil {
+		oners = r.ReadAllString()
+		_ = r.Close()
+	}
+
+	// (用户1) 刷新份额
+	var refreshRes sharev1.ShareRefreshRes
+	refreshRes, err = shareRefresh(gctx.New(), claim1, privacy)
+	if err != nil {
+		t.Errorf("[%s@%s]份额刷新失败: %v", u1.Username, u1.Password, err)
+		return
+	}
+	if refreshRes.DeviceShare == privacy.Data.Share {
+		t.Errorf("份额刷新之后应该得到不一样的份额")
+		return
+	}
+
+	privacy.Data.Share = refreshRes.DeviceShare
+	privacy.Data.RecoveryCode = refreshRes.RecoveryCode
+
+	// (用户1)下载文件
+	r, err = g.Client().SetHeader("Authorization", claim1.Data).
+		Post(gctx.New(), downloadAPI, g.Map{
+			"item_id": privacy.Data.ItemId,
+			"share":   refreshRes.DeviceShare,
+		})
+	if err != nil {
+		t.Errorf("[%s@%s]文件下载失败", u1.Username, u1.Password)
+		return
+	}
+	if r != nil {
+		content = r.ReadAll()
+		r.Close()
+	}
+	if checksum != crc32.ChecksumIEEE(content) {
+		t.Errorf("[%s@%s]文件下载失败: 内容校验不匹配", u1.Username, u1.Password)
+		spew.Dump(content)
+		return
+	}
+	t.Logf("[%s@%s]文件下载成功", u1.Username, u1.Password)
+}
+func last[T any](s []T) T {
+	return s[len(s)-1]
 }

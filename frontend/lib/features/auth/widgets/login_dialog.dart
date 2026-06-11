@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../providers/auth_provider.dart';
+import '../providers/account_cache_provider.dart';
+import '../services/account_cache_service.dart';
+import '../models/account_cache_model.dart';
 
 /// 登录/注册模态框（带右侧滑入动画 + 遮罩）
 class LoginDialog extends ConsumerStatefulWidget {
@@ -63,6 +66,43 @@ class _LoginDialogState extends ConsumerState<LoginDialog>
     });
   }
 
+  Widget _buildAccountDropdown() {
+    final accountsAsync = ref.watch(accountCacheProvider);
+    return accountsAsync.when(
+      data: (accounts) {
+        if (accounts.isEmpty) return const SizedBox.shrink();
+        return DropdownButtonFormField<String>(
+          decoration: const InputDecoration(
+            labelText: '快速选择账号',
+            isDense: true,
+            border: OutlineInputBorder(),
+            prefixIcon: Icon(Icons.people_outline, size: 20),
+          ),
+          items: accounts
+              .map((a) => DropdownMenuItem(
+                    value: a.username,
+                    child: Text(a.username),
+                  ))
+              .toList(),
+          onChanged: (name) async {
+            if (name == null) return;
+            _usernameController.text = name;
+            final cacheService = AccountCacheService();
+            final pwd = await cacheService.getPassword(name);
+            if (pwd != null) _passwordController.text = pwd;
+            final account =
+                accounts.firstWhere((a) => a.username == name);
+            if (account.email.isNotEmpty) {
+              _emailController.text = account.email;
+            }
+          },
+        );
+      },
+      loading: () => const SizedBox.shrink(),
+      error: (e, s) => const SizedBox.shrink(),
+    );
+  }
+
   void _submit() async {
     final username = _usernameController.text.trim();
     final password = _passwordController.text.trim();
@@ -105,6 +145,23 @@ class _LoginDialogState extends ConsumerState<LoginDialog>
     final latestState = ref.read(authProvider);
 
     if (success) {
+      // 保存到本地缓存
+      if (_isLogin) {
+        try {
+          final cacheService = AccountCacheService();
+          await cacheService.savePassword(username, password);
+          await cacheService.saveAccount(CachedAccount(
+            username: username,
+            email: email,
+            lastUsedAt: DateTime.now(),
+          ));
+          ref.read(accountCacheProvider.notifier).refresh();
+        } catch (_) {
+          // 缓存保存失败不影响登录流程
+        }
+      }
+
+      if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text(_isLogin ? '登录成功' : '注册成功')),
       );
@@ -190,6 +247,13 @@ class _LoginDialogState extends ConsumerState<LoginDialog>
                         ],
                       ),
                       const SizedBox(height: 24),
+
+                      // 快速选择账号（仅登录模式 + 有缓存时显示）
+                      if (_isLogin) ...[
+                        _buildAccountDropdown(),
+                        const SizedBox(height: 12),
+                      ],
+
                       // 表单
                       TextField(
                         controller: _usernameController,

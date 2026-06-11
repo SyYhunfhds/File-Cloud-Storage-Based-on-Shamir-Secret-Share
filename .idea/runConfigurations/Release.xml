@@ -2,7 +2,7 @@
   <configuration default="false" name="构建Release版" type="GoApplicationRunConfiguration" factoryName="Go Application">
     <module name="CryptographyDesign" />
     <working_directory value="$PROJECT_DIR$" />
-    <go_parameters value="-o Release\main-0.4.22.exe" />
+    <go_parameters value="-o Release\main-0.4.26.exe" />
     <kind value="PACKAGE" />
     <package value="backend" />
     <directory value="$PROJECT_DIR$" />

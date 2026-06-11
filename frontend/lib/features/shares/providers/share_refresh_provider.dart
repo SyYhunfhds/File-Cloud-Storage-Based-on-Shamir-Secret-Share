@@ -93,7 +93,9 @@ class ShareRefreshNotifier extends Notifier<ShareRefreshState> {
         );
         if (msg.progress >= 100 || msg.data != null) {
           state = state.copyWith(isRefreshing: false);
-          _saveRefreshedShare(itemId, msg.data, auth.userName);
+          final combinedId =
+              '${ref.read(authProvider).userId}_${ref.read(authProvider).userName}';
+          _saveRefreshedShare(itemId, msg.data, combinedId);
         }
       },
       onError: (error) {
@@ -103,24 +105,16 @@ class ShareRefreshNotifier extends Notifier<ShareRefreshState> {
         );
       },
     );
-
-    // 流自然结束但未收到 progress=100 → 异常
-    if (state.isRefreshing) {
-      state = state.copyWith(
-        errorMessage: '份额刷新异常中断，请联系管理员',
-        isRefreshing: false,
-      );
-    }
   }
 
   /// 保存刷新后的份额到 Hive
   Future<void> _saveRefreshedShare(
-      int itemId, ShareRefreshRes? result, String userName) async {
+      int itemId, ShareRefreshRes? result, String combinedId) async {
     if (result == null) return;
 
     try {
       final shareStorage = ShareStorageService();
-      final existing = await shareStorage.get(userName, itemId);
+      final existing = await shareStorage.get(combinedId, itemId);
       if (existing == null) {
         debugPrint(
             '[ShareRefresh] itemId=$itemId 的旧份额不存在，跳过保存');
@@ -128,10 +122,10 @@ class ShareRefreshNotifier extends Notifier<ShareRefreshState> {
       }
 
       final encryptedShare =
-          await ShareCryptoService.encrypt(result.deviceShare, userName);
+          await ShareCryptoService.encrypt(result.deviceShare, combinedId);
       final encryptedRecovery = await ShareCryptoService.encrypt(
         result.recoveryCode,
-        userName,
+        combinedId,
         type: CryptoKeyType.recovery,
       );
 
@@ -144,7 +138,7 @@ class ShareRefreshNotifier extends Notifier<ShareRefreshState> {
         createdAt: existing.createdAt,
       );
 
-      await shareStorage.save(userName, updated);
+      await shareStorage.save(combinedId, updated);
       debugPrint('[ShareRefresh] itemId=$itemId 新份额已保存');
     } catch (e) {
       debugPrint('[ShareRefresh] 保存刷新后份额失败: $e');

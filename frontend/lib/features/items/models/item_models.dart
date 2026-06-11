@@ -137,23 +137,65 @@ class DetailItemInfo {
 
 /// 条目修改请求（对应后端 `ItemUpdateReq`）
 class ItemUpdateReq {
-  final String filename;
+  final int itemId;
   final String? newFilename;
   final int? minimumPrivilege;
   final bool? enablePublic;
 
   const ItemUpdateReq({
-    required this.filename,
+    required this.itemId,
     this.newFilename,
     this.minimumPrivilege,
     this.enablePublic,
   });
 
   Map<String, dynamic> toJson() {
-    final map = <String, dynamic>{'filename': filename};
+    final map = <String, dynamic>{'item_id': itemId};
     if (newFilename != null) map['new_filename'] = newFilename;
     if (minimumPrivilege != null) map['minimum_privilege'] = minimumPrivilege;
     if (enablePublic != null) map['enable_public'] = enablePublic;
     return map;
   }
+}
+
+/// 条目删除响应（对应后端 `ItemDeleteRes`）
+class ItemDeleteRes {
+  final int totalDeleted;
+
+  const ItemDeleteRes({required this.totalDeleted});
+
+  factory ItemDeleteRes.fromJson(Map<String, dynamic> json) =>
+      ItemDeleteRes(
+          totalDeleted: (json['total_deleted'] as num?)?.toInt() ?? 0);
+}
+
+/// 申请查看权限请求（对应后端 `ApplyForViewingReq`）
+class ApplyForViewingReq {
+  final List<int> itemIds;
+
+  const ApplyForViewingReq({required this.itemIds});
+
+  Map<String, dynamic> toJson() => {'item_ids': itemIds};
+}
+
+/// 申请查看权限响应（对应后端 `ApplyForViewingRes`）
+class ApplyForViewingRes {
+  final int totalApplied;
+
+  const ApplyForViewingRes({required this.totalApplied});
+
+  factory ApplyForViewingRes.fromJson(Map<String, dynamic> json) =>
+      ApplyForViewingRes(
+          totalApplied: (json['total_applied'] as num?)?.toInt() ?? 0);
+}
+
+/// 条目详情响应包装（对应后端 `GetOneItemRes`）
+class GetOneItemRes {
+  final DetailItemInfo item;
+
+  const GetOneItemRes({required this.item});
+
+  factory GetOneItemRes.fromJson(Map<String, dynamic> json) =>
+      GetOneItemRes(
+          item: DetailItemInfo.fromJson(json['item'] as Map<String, dynamic>));
 }

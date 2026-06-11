@@ -3,6 +3,8 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/api_config_provider.dart';
 import '../services/auth_api_service.dart';
+import '../services/account_cache_service.dart';
+import '../models/account_cache_model.dart';
 import '../../shares/providers/share_providers.dart';
 
 /// 认证状态
@@ -134,6 +136,71 @@ class AuthNotifier extends Notifier<AuthState> {
       state = state.copyWith(
         isLoading: false,
         errorMessage: '连接失败',
+      );
+      return false;
+    }
+  }
+
+  /// 快速登录 — 使用上次缓存的账号自动登录
+  Future<bool> quickLogin() async {
+    try {
+      final cacheService = AccountCacheService();
+      final accounts = await cacheService.loadAccounts();
+      if (accounts.isEmpty) {
+        // 无缓存 → 静默跳过，不弹窗
+        return false;
+      }
+
+      final last = accounts.first; // 已按 lastUsedAt 降序排列
+      final password = await cacheService.getPassword(last.username);
+      if (password == null) return false;
+
+      state = state.copyWith(isLoading: true, clearError: true);
+
+      final service = _createService();
+      final resp = await service.login(
+        username: last.username,
+        email: last.email.isNotEmpty ? last.email : null,
+        password: password,
+      );
+
+      if (!resp.isSuccess || resp.data == null || resp.data!.isEmpty) {
+        state = state.copyWith(
+          isLoading: false,
+          errorMessage: '快速登录失败: ${resp.message}',
+        );
+        return false;
+      }
+
+      final token = resp.data!;
+
+      // 从 JWT payload 提取 userId（fallback）
+      int jwtUserId = 0;
+      try {
+        final parts = token.split('.');
+        if (parts.length >= 2) {
+          final payload = utf8.decode(
+            base64Url.decode(base64Url.normalize(parts[1])),
+          );
+          final payloadJson = jsonDecode(payload) as Map<String, dynamic>;
+          jwtUserId = (payloadJson['Id'] as num?)?.toInt() ?? 0;
+        }
+      } catch (_) {}
+
+      final result = await _fetchUserInfo(token, jwtUserId: jwtUserId);
+      if (result) {
+        // 更新 lastUsedAt
+        await cacheService.saveAccount(CachedAccount(
+          username: last.username,
+          email: last.email,
+          lastUsedAt: DateTime.now(),
+        ));
+      }
+      return result;
+    } catch (e) {
+      state = state.copyWith(
+        isLoading: false,
+        errorMessage: '快速登录失败: 连接失败',
       );
       return false;
     }

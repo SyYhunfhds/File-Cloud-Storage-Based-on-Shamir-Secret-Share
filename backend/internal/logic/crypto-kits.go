@@ -27,7 +27,7 @@ type ShamirOption struct {
 }
 type AESOption struct {
 	// (AES-GCM)密钥长度, 默认为32
-	key []byte
+	key string
 	// AES-GCM随机密钥长度, 固定为32字节
 	keyLen          int
 	additionalBytes []byte // 附加在密文后面的数据
@@ -44,11 +44,28 @@ func DefaultShamirOption() ShamirOption {
 }
 func DefaultAESOption() AESOption {
 	return AESOption{
-		key:             grand.B(32),
+		key:             grand.S(32),
 		additionalBytes: grand.B(32),
 		keyLen:          32,
 		AADSize:         32,
 	}
+}
+
+type ICryptoUtils interface {
+	BuildWithConfig(cfg config.Item)
+	StringKey(n ...int) string
+	Key(n ...int) []byte
+
+	Encrypt(ctx context.Context, key []byte, plaintext []byte) (ciphertext []byte, err error)
+	ChainAfterEncrypt(ctx context.Context, key []byte, plaintext []byte, processes ...EncodingFunc) (ciphertext []byte, err error)
+	Decrypt(ctx context.Context, key []byte, ciphertext []byte) (plaintext []byte, err error)
+	ChainBeforeDecrypt(ctx context.Context, key []byte, ciphertext []byte, processes ...DecodingFunc) (plaintext []byte, err error)
+	ChainDecrypt(ctx context.Context, key []byte, ciphertext []byte, processes ...DecodingFunc) (plaintext []byte, err error)
+
+	Split(ctx context.Context, secret []byte, coordinate ...uint32) (shares []shamir.Share, err error)
+	SplitToJson(ctx context.Context, secret []byte, coordinate ...uint32) ([][]byte, error)
+	Recover(ctx context.Context, shares ...shamir.Share) (secret []byte, err error)
+	RecoverFromJson(ctx context.Context, data ...[]byte) ([]byte, error)
 }
 
 type CryptoUtils struct {
@@ -64,7 +81,7 @@ func NewCryptoUtils() *CryptoUtils {
 }
 
 func (cu *CryptoUtils) BuildWithConfig(ic *config.Item) {
-	cu.ao.key = []byte(ic.ShareKey)
+	cu.ao.key = ic.ShareKey
 }
 
 func (cu *CryptoUtils) SplitShare(secret []byte, userID uint32) (
@@ -131,6 +148,94 @@ func (cu *CryptoUtils) RecoverShare(shares ...shamir.Share) []byte {
 // SymmetricEncrypt
 //
 // 使用AES-GCM进行加密; 可接受外部密钥, 默认启用字节数组清空; 若传入的密钥为空, 则使用配置文件的密钥
+
+func (cu *CryptoUtils) GCMEncrypt(ctx context.Context, plaintext []byte, key []byte, autoClear ...bool) (ciphertext []byte, nk []byte, err error) {
+	var enableClear bool
+	if len(autoClear) > 0 {
+		enableClear = autoClear[0]
+	} else {
+		enableClear = true
+	}
+
+	if len(key) < cu.ao.keyLen {
+		key = make([]byte, len(cu.ao.key))
+		copy(key, cu.ao.key)
+	}
+	nk = make([]byte, len(key))
+	copy(nk, key)
+
+	// 生成Cipher
+	block, err := aes.NewCipher(key)
+	if err != nil {
+		return nil, nil, err
+	}
+	gcm, err := cipher.NewGCM(block)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	// 生成随机向量 [和附加数据]
+	nonce := grand.B(gcm.NonceSize())
+	aad := grand.B(cu.ao.AADSize)
+	// Nonce(12 字节) + 密文载荷(N 字节) + 认证标签Tag(16 字节) + AAD(32字节)
+	ciphertext = gcm.Seal(nil, nonce, plaintext, aad)
+
+	if enableClear {
+		Memclr(key) // 顺便把密钥原本也给置空了
+		Memclr(plaintext)
+	}
+	return ciphertext, nk, nil
+}
+func (cu *CryptoUtils) GCMEncryptWithRandKey(ctx context.Context, plaintext []byte) (ciphertext []byte, nk []byte, err error) {
+	key := grand.B(cu.ao.keyLen)
+	return cu.GCMEncrypt(ctx, plaintext, key)
+}
+func (cu *CryptoUtils) GCMDecrypt(ctx context.Context, ciphertext []byte, key []byte, autoClear ...bool) (plaintext []byte, err error) {
+	var enableClear bool
+	if len(autoClear) > 0 {
+		enableClear = autoClear[0]
+	} else {
+		enableClear = true
+	}
+
+	if len(key) < cu.ao.keyLen {
+		key = make([]byte, len(cu.ao.key))
+		copy(key, cu.ao.key)
+	}
+
+	block, err := aes.NewCipher(key)
+	if err != nil {
+		return nil, err
+	}
+	gcm, err := cipher.NewGCM(block)
+	if err != nil {
+		return nil, err
+	}
+
+	var expectedLeastSize = gcm.NonceSize() + 16 + cu.ao.AADSize
+	if len(ciphertext) < expectedLeastSize {
+		return nil, gerror.Newf("密文长度不足, 需至少包括nonce、tag和AAD三个部分共%d字节", expectedLeastSize)
+	}
+	var (
+		nonceSize = gcm.NonceSize()
+		aadSize   = cu.ao.AADSize
+		nonce     = make([]byte, nonceSize)
+		aad       = make([]byte, aadSize)
+		payload   = make([]byte, len(ciphertext)-nonceSize-aadSize)
+	)
+	copy(nonce, ciphertext[:nonceSize])
+	copy(payload, ciphertext[nonceSize:aadSize])
+	copy(aad, ciphertext[nonceSize+len(payload):])
+
+	plaintext, err = gcm.Open(nil, nonce, ciphertext, aad)
+	if enableClear {
+		Memclr(ciphertext)
+	}
+	if err != nil {
+		return nil, err
+	}
+	return plaintext, nil
+}
 
 /*
 func (cu *CryptoUtils) SymmetricEncrypt(plaintext []byte, key []byte, autoMemclr ...bool) (ciphertext []byte, err error) {
@@ -227,10 +332,10 @@ func (cu *CryptoUtils) EncryptAuthShare(ctx context.Context, share []byte, autoC
 		attribute.String("auth_share.ciphertext.base64encode", gbase64.EncodeToString(ciphertext)),
 		attribute.Int("crypto_utils.master_key.length", len(cu.ao.key)),
 		// TODO: 移除高危Span (服务器主密钥)
-		attribute.String("crypto_utils.master_key.base64encode", gbase64.EncodeToString(cu.ao.key)),
+		attribute.String("crypto_utils.master_key.base64encode", gbase64.EncodeString(cu.ao.key)),
 	)
 
-	block, err := aes.NewCipher(cu.ao.key)
+	block, err := aes.NewCipher([]byte(cu.ao.key))
 	if err != nil {
 		span.SetStatus(codes.Error, "无法生成AES密钥块")
 		span.RecordError(err)
@@ -295,10 +400,10 @@ func (cu *CryptoUtils) DecryptAuthShare(ctx context.Context, ciphertext []byte, 
 		attribute.String("auth_share.ciphertext.base64encode", gbase64.EncodeToString(ciphertext)),
 		attribute.Int("crypto_utils.master_key.length", len(cu.ao.key)),
 		// TODO: 移除高危Span (服务器主密钥)
-		attribute.String("crypto_utils.master_key.base64encode", gbase64.EncodeToString(cu.ao.key)),
+		attribute.String("crypto_utils.master_key.base64encode", gbase64.EncodeString(cu.ao.key)),
 	)
 
-	block, err := aes.NewCipher(cu.ao.key)
+	block, err := aes.NewCipher([]byte(cu.ao.key))
 	if err != nil {
 		span.SetStatus(codes.Error, "无法生成AES密钥块")
 		span.RecordError(err)

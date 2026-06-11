@@ -2,11 +2,14 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../desktop/title_bar.dart';
+import '../../auth/providers/auth_provider.dart';
 import '../models/audit_models.dart';
 import '../providers/audit_list_provider.dart';
 import '../widgets/audit_filter_bar.dart';
 import '../widgets/audit_table.dart';
 import '../widgets/share_refresh_dialog.dart';
+import '../../shares/services/share_storage_service.dart';
+import '../../shares/services/crypto_service.dart';
 
 /// 审计管理页面
 ///
@@ -215,7 +218,27 @@ class _AuditPageState extends ConsumerState<AuditPage> {
     }
   }
 
-  void _showRefreshPrompt(int itemId, String itemName) {
+  Future<void> _showRefreshPrompt(int itemId, String itemName) async {
+    // 从 Hive 加载 device share
+    String? deviceShare;
+    try {
+      final auth = ref.read(authProvider);
+      final combinedId = '${auth.userId}_${auth.userName}';
+      if (combinedId.isNotEmpty) {
+        final storage = ShareStorageService();
+        final record = await storage.get(combinedId, itemId);
+        if (record != null) {
+          deviceShare = await ShareCryptoService.decrypt(
+            record.encryptedShare,
+            combinedId,
+          );
+        }
+      }
+    } catch (e) {
+      debugPrint('[AuditPage] 加载设备份额失败: $e');
+    }
+
+    if (!mounted) return;
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
@@ -235,6 +258,7 @@ class _AuditPageState extends ConsumerState<AuditPage> {
                 context,
                 itemId: itemId,
                 itemName: itemName,
+                deviceShare: deviceShare,
               );
             },
             child: const Text('刷新'),

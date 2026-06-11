@@ -24,7 +24,7 @@ type TempValue struct {
 const queryValidItemIds = `select 
     array_agg(items.id) as item_id 
 from public.items 
-where owner_id != ? and is_public = true`
+where owner_id != ? and is_public = true and items.id in (?)`
 
 func (c *ControllerV1) ApplyForViewing(ctx context.Context, req *v1.ApplyForViewingReq) (res *v1.ApplyForViewingRes, err error) {
 	ctx, span := gtrace.NewSpan(ctx, "ApplyForViewingHandler")
@@ -45,12 +45,17 @@ func (c *ControllerV1) ApplyForViewing(ctx context.Context, req *v1.ApplyForView
 
 	var temp = TempValue{}
 	_ctx, _span := gtrace.NewSpan(ctx, "校验有效的ItemId")
-	err = g.DB().Ctx(_ctx).Raw(queryValidItemIds, ac.Id).Scan(&temp)
+	err = g.DB().Ctx(_ctx).Raw(queryValidItemIds, ac.Id, req.ItemIds).Scan(&temp)
 	if err != nil {
 		_span.SetStatus(codes.Error, "无法查询有效的ItemId")
 		_span.SetAttributes(attribute.String("db.examine.error", err.Error()))
 	}
 	if len(temp.ItemId) != len(req.ItemIds) {
+		_span.SetAttributes(
+			attribute.IntSlice("request.item_id_list", req.ItemIds),
+			attribute.IntSlice("db.examine.item_id_list", temp.ItemId),
+		)
+
 		_span.SetStatus(codes.Error, "检查到水平越权")
 		err = gerror.NewCode(gcode.CodeInvalidOperation, "检测到可能的水平越权")
 		_span.End()

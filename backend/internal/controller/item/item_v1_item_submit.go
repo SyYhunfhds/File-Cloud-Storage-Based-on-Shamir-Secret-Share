@@ -132,7 +132,8 @@ func (c *ControllerV1) ItemSubmit(ctx context.Context, req *v1.ItemSubmitReq) (r
 	// 数据库存档
 	err = g.DB().Transaction(ctx, func(ctx context.Context, tx gdb.TX) error {
 		itemId, err = dao.Items.Ctx(ctx).Data(do.Items{
-			Filename:   gfile.Basename(filepath),
+			Filename:   file.Filename,
+			Savename:   gfile.Basename(filepath),
 			OwnerId:    ac.Id,
 			UploaderId: ac.Id,
 
@@ -193,7 +194,7 @@ func (c *ControllerV1) ItemSubmit(ctx context.Context, req *v1.ItemSubmitReq) (r
 		Name         string `json:"name" dc:"上传后的文件名; 可能会因为存在同名文件而被重命名"`
 		Share        string `json:"share" dc:"Base64编码的明文Device Share"`
 		RecoveryCode string `json:"recovery_code" dc:"Recovery Share加密时用的随机32位可打印字符密钥"`
-	}{ItemId: int(itemId), Name: filepath, Share: deviceShare, RecoveryCode: recoveryCode}
+	}{ItemId: int(itemId), Name: file.Filename, Share: deviceShare, RecoveryCode: recoveryCode}
 
 	span.AddEvent("条目上传成功")
 	span.SetStatus(codes.Ok, "条目上传成功")

@@ -47,7 +47,8 @@ create table if not exists public.employees (
 -- 条目表 items
 create table if not exists public.items (
     id serial primary key,
-    filename varchar(255) not null, -- 文件名; 允许出现重复的文件名
+    filename varchar(255) not null, -- (原始)文件名
+    savename varchar(255) unique not null, -- 保存名; 唯一标识符
     owner_id int references users (id) on delete cascade on update cascade, -- 文件所有者ID
     uploader_id int references users (id) on delete cascade on update cascade, -- 上传者ID, 默认和owner_id一样
     minimum_privilege int not null, -- 要看到这个条目所需的最低权限, 默认和用户的权限一样
@@ -56,6 +57,8 @@ create table if not exists public.items (
     changed_at timestamp default now(), -- 修改时间
     deleted_at timestamp default null -- 删除时间
 );
+alter table public.items add column savename varchar(255) unique not null default '';
+
 -- 记得给owner_id补一个索引
 create index items_owner_id_index on items (owner_id);
 -- 启用items表的RLS

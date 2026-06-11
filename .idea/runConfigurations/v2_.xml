@@ -1,13 +1,14 @@
 <component name="ProjectRunConfigurationManager">
-  <configuration default="false" name="Go Shamir/v2 全量测试" type="GoTestRunConfiguration" factoryName="Go Test">
+  <configuration default="false" name="加解密套具封装实现v2 业务测试" type="GoTestRunConfiguration" factoryName="Go Test">
     <module name="CryptographyDesign" />
-    <working_directory value="$PROJECT_DIR$/backend/pkg/shamir/v2" />
+    <working_directory value="$PROJECT_DIR$/backend/tests/interf/crypto" />
     <root_directory value="$PROJECT_DIR$/backend" />
     <kind value="PACKAGE" />
-    <package value="backend/pkg/shamir/v2" />
+    <package value="backend/tests/interf/crypto" />
     <directory value="$PROJECT_DIR$" />
     <filePath value="$PROJECT_DIR$" />
     <framework value="gotest" />
+    <pattern value="^\QTestCryptoUtilsV2\E$" />
     <method v="2" />
   </configuration>
 </component>

@@ -163,9 +163,20 @@ class EntryListNotifier extends Notifier<EntryListState> {
   // ---------------------------------------------------------------------------
 
   Future<DetailItemInfo?> fetchItemDetail(int itemId) async {
-    debugPrint('[DEBUG] fetchItemDetail called: itemId=$itemId');
-    debugPrint('[TODO] GET /v1/protected/item/detail?item_id=$itemId');
-    return null;
+    try {
+      final authState = ref.read(authProvider);
+      final apiConfig = ref.read(apiConfigProvider);
+
+      if (!authState.isLoggedIn || authState.token.isEmpty) return null;
+
+      final service = ItemApiService(apiConfig.baseUrl);
+      final detail = await service.getItemDetail(itemId,
+          token: authState.token);
+      return detail;
+    } catch (e) {
+      debugPrint('[EntryList] 获取条目详情异常: $e');
+      return null;
+    }
   }
 
   Future<bool> updateItem(ItemUpdateReq req) async {

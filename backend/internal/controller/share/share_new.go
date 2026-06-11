@@ -9,6 +9,7 @@ import (
 	v1 "backend/api/share/v1"
 	"backend/internal/config"
 	"backend/internal/logic"
+	crypv2 "backend/internal/logic/crypto/v2"
 
 	"github.com/gogf/gf/v2/net/ghttp"
 )
@@ -22,7 +23,7 @@ type ControllerV1 struct {
 	options *option
 
 	hu *logic.HashUtils
-	cu *logic.CryptoUtils
+	cu logic.ICryptoUtils
 }
 
 type OptionFunc func(c *ControllerV1)
@@ -31,7 +32,7 @@ func NewV1(options ...OptionFunc) share.IShareV1 {
 	ctrl := &ControllerV1{
 		options: &option{},
 		hu:      logic.NewHashUtils(),
-		cu:      logic.NewCryptoUtils(),
+		cu:      crypv2.NewICryptoUtils(),
 	}
 
 	ctrl.injectDefaultConfig()
@@ -75,7 +76,7 @@ func WithCryptoConfig(cfg *config.Item) OptionFunc {
 
 func (c *ControllerV1) build() {
 	c.hu.BuildWithConfig(c.options.argonConfig)
-	c.cu.BuildWithConfig(c.options.cryptoConfig)
+	c.cu.BuildWithConfig(*c.options.cryptoConfig)
 }
 
 type Msg struct { // 用于SSE期间做回复

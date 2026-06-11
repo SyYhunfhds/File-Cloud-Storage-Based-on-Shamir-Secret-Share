@@ -96,49 +96,97 @@ class _EntryTableState extends ConsumerState<EntryTable> {
     final apiConfig = ref.read(apiConfigProvider);
     final service = ItemApiService(apiConfig.baseUrl);
 
-    final resp = await service.reportItem(
-      itemId: entry.itemId,
+    final resp = await service.applyForViewing(
+      itemIds: [entry.itemId],
       token: authState.token,
     );
 
     if (mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text(resp.isSuccess ? '申请已提交' : '申请失败: ${resp.message}'),
+          content: Text(resp.isSuccess
+              ? '已提交 ${resp.data?.totalApplied ?? 1} 条申请'
+              : '申请失败: ${resp.message}'),
         ),
       );
     }
   }
 
-  Future<void> _handleEdit(ItemInfo entry) async {
-    final result = await showDialog<ItemUpdateReq>(
+  Future<void> _handleDelete(ItemInfo entry) async {
+    final confirmed = await showDialog<bool>(
       context: context,
-      builder: (ctx) => _ItemEditDialog(entry: entry),
+      builder: (ctx) => AlertDialog(
+        title: const Text('删除条目'),
+        content: Text('确定要删除「${entry.filename}」(#${entry.itemId}) 吗？\n此操作不可撤销。'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(false),
+            child: const Text('取消'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(true),
+            child: Text('删除',
+                style: TextStyle(color: Theme.of(context).colorScheme.error)),
+          ),
+        ],
+      ),
     );
 
-    if (result == null || !mounted) return;
+    if (confirmed != true || !mounted) return;
 
-    final notifier = ref.read(entryListProvider.notifier);
-    final success = await notifier.updateItem(result);
+    final authState = ref.read(authProvider);
+    final apiConfig = ref.read(apiConfigProvider);
+    final service = ItemApiService(apiConfig.baseUrl);
+
+    final resp = await service.deleteItems(
+      itemIds: [entry.itemId],
+      token: authState.token,
+    );
 
     if (!mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
-        content: Text(success ? '更新成功' : '更新失败'),
+        content: Text(resp.isSuccess
+            ? '已删除 ${resp.data?.totalDeleted ?? 1} 条'
+            : '删除失败: ${resp.message}'),
       ),
     );
 
-    if (success) {
-      // 刷新当前列表
-      final mode = ref.read(entryListProvider).filterMode;
-      switch (mode) {
-        case EntryFilterMode.my:
-          ref.read(entryListProvider.notifier).fetchMyEntries();
-        case EntryFilterMode.public:
-          ref.read(entryListProvider.notifier).fetchPublicEntries();
-        case EntryFilterMode.all:
-          ref.read(entryListProvider.notifier).fetchAllEntries();
-      }
+    if (resp.isSuccess) {
+      _refreshList();
+    }
+  }
+
+  Future<void> _handleEdit(ItemInfo entry) async {
+    // 加载条目详情用于预填充
+    final detail =
+        await ref.read(entryListProvider.notifier).fetchItemDetail(entry.itemId);
+    if (!mounted) return;
+
+    final result = await showDialog<ItemUpdateReq>(
+      context: context,
+      builder: (ctx) => _ItemEditDialog(entry: entry, detail: detail),
+    );
+    if (result == null || !mounted) return;
+
+    final notifier = ref.read(entryListProvider.notifier);
+    final success = await notifier.updateItem(result);
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(success ? '更新成功' : '更新失败')),
+    );
+    if (success) _refreshList();
+  }
+
+  void _refreshList() {
+    final mode = ref.read(entryListProvider).filterMode;
+    switch (mode) {
+      case EntryFilterMode.my:
+        ref.read(entryListProvider.notifier).fetchMyEntries();
+      case EntryFilterMode.public:
+        ref.read(entryListProvider.notifier).fetchPublicEntries();
+      case EntryFilterMode.all:
+        ref.read(entryListProvider.notifier).fetchAllEntries();
     }
   }
 
@@ -258,7 +306,7 @@ class _EntryTableState extends ConsumerState<EntryTable> {
           _headerCell('上传时间', 110),
           _headerCell('修改时间', 110),
           _headerCell('可下载', 60),
-          _headerCell('操作', 180),
+          _headerCell('操作', 220),
         ],
       ),
     );
@@ -303,7 +351,7 @@ class _EntryTableState extends ConsumerState<EntryTable> {
             ),
           ),
           SizedBox(
-            width: 180,
+            width: 220,
             child: Row(
               mainAxisSize: MainAxisSize.min,
               children: [
@@ -323,6 +371,8 @@ class _EntryTableState extends ConsumerState<EntryTable> {
                     }
                   },
                 ),
+                const SizedBox(width: 4),
+                _actionButton('删除', () => _handleDelete(entry)),
               ],
             ),
           ),
@@ -371,21 +421,33 @@ class _EntryTableState extends ConsumerState<EntryTable> {
 
 class _ItemEditDialog extends StatefulWidget {
   final ItemInfo entry;
-  const _ItemEditDialog({required this.entry});
+  final DetailItemInfo? detail;
+
+  const _ItemEditDialog({required this.entry, this.detail});
 
   @override
   State<_ItemEditDialog> createState() => _ItemEditDialogState();
 }
 
 class _ItemEditDialogState extends State<_ItemEditDialog> {
+  late final TextEditingController _filenameCtrl;
   late int _minimumPrivilege;
   bool _enablePublic = false;
 
   @override
   void initState() {
     super.initState();
-    // ItemInfo 不含 minimumPrivilege/isPublic，默认值由用户编辑
-    _minimumPrivilege = 1;
+    final d = widget.detail;
+    _filenameCtrl = TextEditingController(
+        text: d?.filename ?? widget.entry.filename);
+    _minimumPrivilege = d?.minimumPrivilege ?? 1;
+    _enablePublic = d?.isPublic ?? false;
+  }
+
+  @override
+  void dispose() {
+    _filenameCtrl.dispose();
+    super.dispose();
   }
 
   @override
@@ -415,6 +477,19 @@ class _ItemEditDialogState extends State<_ItemEditDialog> {
               ),
             ),
             const SizedBox(height: 20),
+
+            // 文件名
+            TextField(
+              controller: _filenameCtrl,
+              decoration: const InputDecoration(
+                labelText: '文件名',
+                helperText: '仅修改前端显示名称，不涉及物理文件',
+                border: OutlineInputBorder(),
+                isDense: true,
+              ),
+              style: const TextStyle(fontSize: 13),
+            ),
+            const SizedBox(height: 12),
 
             // 最低权限等级下拉
             DropdownButtonFormField<int>(
@@ -457,8 +532,10 @@ class _ItemEditDialogState extends State<_ItemEditDialog> {
         ),
         FilledButton(
           onPressed: () {
+            final newName = _filenameCtrl.text.trim();
             Navigator.of(context).pop(ItemUpdateReq(
-              filename: widget.entry.filename,
+              itemId: widget.entry.itemId,
+              newFilename: newName.isNotEmpty ? newName : null,
               minimumPrivilege: _minimumPrivilege,
               enablePublic: _enablePublic,
             ));

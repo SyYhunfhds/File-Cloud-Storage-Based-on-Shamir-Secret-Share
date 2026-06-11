@@ -74,14 +74,17 @@ class ItemApiService {
     return apiResp;
   }
 
-  // ===================== 条目举报/申请下载权限 =====================
+  // ===================== 条目申请查看权限 =====================
 
-  /// 申请下载权限 — `POST v1/protected/report`
-  Future<ApiResponse<void>> reportItem({
-    required int itemId,
+  /// 申请查看权限 — `POST v1/protected/item/apply`
+  ///
+  /// [itemIds] 要申请的条目 ID 列表。
+  /// 注意：不要申请自己的条目，后端会判为水平越权。
+  Future<ApiResponse<ApplyForViewingRes>> applyForViewing({
+    required List<int> itemIds,
     required String token,
   }) async {
-    final url = Uri.parse('$baseUrl/v1/protected/report');
+    final url = Uri.parse('$baseUrl/v1/protected/item/apply');
 
     final response = await http.post(
       url,
@@ -89,18 +92,20 @@ class ItemApiService {
         'Content-Type': 'application/json',
         'Authorization': 'Bearer $token',
       },
-      body: jsonEncode({'item_id': itemId}),
+      body: jsonEncode({'item_ids': itemIds}),
     );
 
-    return parseApiResponse<void>(response.body, null);
+    return parseApiResponse<ApplyForViewingRes>(
+      response.body,
+      (data) => ApplyForViewingRes.fromJson(data as Map<String, dynamic>),
+    );
   }
 
   // ===================== 条目更新 =====================
 
   /// 条目更新 — `POST v1/protected/item/update`
   ///
-  /// [req] 必须包含 `filename`（条目标识符）。
-  /// 注意：`new_filename` 暂不可用，不要传入该字段。
+  /// [req] 必须包含 `item_id` 和至少一个要修改的字段。
   Future<ApiResponse<void>> updateItem({
     required ItemUpdateReq req,
     required String token,
@@ -117,6 +122,33 @@ class ItemApiService {
     );
 
     return parseApiResponse<void>(response.body, null);
+  }
+
+  // ===================== 条目删除 =====================
+
+  /// 条目删除 — `POST v1/protected/item/delete`
+  ///
+  /// [itemIds] 要删除的条目 ID 列表，可批量。
+  /// 后端有水平越权检测，只允许删除自己的条目。
+  Future<ApiResponse<ItemDeleteRes>> deleteItems({
+    required List<int> itemIds,
+    required String token,
+  }) async {
+    final url = Uri.parse('$baseUrl/v1/protected/item/delete');
+
+    final response = await http.post(
+      url,
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': 'Bearer $token',
+      },
+      body: jsonEncode({'item_ids': itemIds}),
+    );
+
+    return parseApiResponse<ItemDeleteRes>(
+      response.body,
+      (data) => ItemDeleteRes.fromJson(data as Map<String, dynamic>),
+    );
   }
 
   // ===================== 条目下载 =====================
@@ -159,5 +191,29 @@ class ItemApiService {
 
     // 非 JSON → 文件字节流
     return (data: response.bodyBytes, errorMessage: null);
+  }
+
+  // ===================== 条目详情 =====================
+
+  /// 条目详情 — `GET v1/protected/item?item_id=xxx`
+  Future<DetailItemInfo?> getItemDetail(int itemId,
+      {required String token}) async {
+    final uri = Uri.parse('$baseUrl/v1/protected/item')
+        .replace(queryParameters: {'item_id': '$itemId'});
+
+    final response = await http.get(uri, headers: {
+      'Authorization': 'Bearer $token',
+      'Content-Type': 'application/json',
+    });
+
+    final parsed = parseApiResponse<GetOneItemRes>(
+      response.body,
+      (data) =>
+          GetOneItemRes.fromJson(data as Map<String, dynamic>),
+    );
+
+    if (parsed.isSuccess && parsed.data != null) return parsed.data!.item;
+    debugPrint('[ItemApi] 获取条目详情失败: ${parsed.message}');
+    return null;
   }
 }

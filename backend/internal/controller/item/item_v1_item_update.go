@@ -8,14 +8,12 @@ import (
 
 	"backend/api/item/v1"
 
-	"github.com/davecgh/go-spew/spew"
 	"github.com/gogf/gf/v2/errors/gcode"
 	"github.com/gogf/gf/v2/errors/gerror"
 	"github.com/gogf/gf/v2/frame/g"
 )
 
 func (c *ControllerV1) ItemUpdate(ctx context.Context, req *v1.ItemUpdateReq) (res *v1.ItemUpdateRes, err error) {
-	spew.Dump(req)
 	ac, err := claims.AuthClaimsFromCtx(ctx)
 	if err != nil {
 		return nil, gerror.NewCode(gcode.CodeNotAuthorized, "用户未登录")
@@ -26,12 +24,12 @@ func (c *ControllerV1) ItemUpdate(ctx context.Context, req *v1.ItemUpdateReq) (r
 	}
 
 	// 这个时候会有水平越权, 但并不会执行
-	model := dao.Items.Ctx(ctx).Where("owner_id", ac.Id).Where("filename", req.Filename).
+	model := dao.Items.Ctx(ctx).Where("owner_id", ac.Id).WherePri(req.ItemId).
 		Data(g.Map{
 			"minimum_privilege": req.MinimumPrivilege,
-			// "filename": req.NewFilename, // TODO: 增加文件名同步修改功能
-			"is_public":  req.EnablePublic,
-			"changed_at": time.Now(),
+			"filename":          req.NewFilename, // 现在只是改个字段而已的事了
+			"is_public":         req.EnablePublic,
+			"changed_at":        time.Now(),
 		})
 
 	_, err = model.Update()

@@ -2,12 +2,15 @@ import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 
+import 'package:flutter/foundation.dart';
+
 import '../models/share_refresh_models.dart';
 
 /// 份额刷新 SSE 服务
 ///
 /// 使用 `dart:io` HttpClient 发起 POST 请求并逐行读取 SSE 流。
 /// 通过 [onProgress] 回调推送每条进度消息。
+/// 使用 [Completer] 确保 [refresh] 方法在 SSE 流完全结束前不返回。
 class ShareRefreshService {
   final String baseUrl;
   HttpClient? _client;
@@ -30,6 +33,7 @@ class ShareRefreshService {
     _client?.close();
     _client = HttpClient();
     _client!.connectionTimeout = const Duration(seconds: 10);
+    final completer = Completer<void>();
 
     try {
       final uri = Uri.parse('$baseUrl/v1/protected/share/refresh/');
@@ -48,8 +52,7 @@ class ShareRefreshService {
       final response = await request.close();
 
       if (response.statusCode != 200) {
-        final body =
-            await response.transform(utf8.decoder).join();
+        final body = await response.transform(utf8.decoder).join();
         onError('服务器返回 ${response.statusCode}: $body');
         return;
       }
@@ -67,25 +70,42 @@ class ShareRefreshService {
           try {
             final json = jsonDecode(trimmed) as Map<String, dynamic>;
             final msg = ShareRefreshProgressMessage.fromJson(json);
+            debugPrint('[SSE] 收到消息: progress=${msg.progress}, message=${msg.message}');
             onProgress(msg);
 
             // progress=100 或有 data → 完成，关闭流
             if (msg.progress >= 100 || msg.data != null) {
+              debugPrint('[SSE] 刷新完成: progress=${msg.progress}, hasData=${msg.data != null}');
+              if (!completer.isCompleted) completer.complete();
               _subscription?.cancel();
-              _client?.close();
+              // 不再调用 _client?.close()，避免强制关闭 TCP 连接触发 onError
             }
-          } catch (_) {
-            // 非 JSON 行忽略
+          } catch (e) {
+            debugPrint('[SSE] JSON 解析失败: $e, 原始行: ${trimmed.length > 100 ? '${trimmed.substring(0, 100)}...' : trimmed}');
           }
         },
         onError: (e) {
-          onError('SSE 流异常: $e');
+          if (!completer.isCompleted) {
+            debugPrint('[SSE] 流错误（未完成状态）: $e');
+            onError('SSE 流异常: $e');
+            completer.complete();
+          } else {
+            debugPrint('[SSE] 流错误（已完成状态，忽略）: $e');
+          }
         },
         onDone: () {
-          // 流自然结束时 progress 未到 100 → 后端异常中断
+          if (!completer.isCompleted) {
+            debugPrint('[SSE] 流意外终止');
+            onError('份额刷新异常中断，请联系管理员');
+            completer.complete();
+          } else {
+            debugPrint('[SSE] 流正常关闭（已完成状态）');
+          }
         },
         cancelOnError: false,
       );
+
+      return completer.future;
     } catch (e) {
       if (e is SocketException && e.osError?.errorCode == 995) {
         // 客户端主动取消（HttpClient.close()）→ 静默

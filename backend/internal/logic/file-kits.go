@@ -11,8 +11,8 @@ import (
 	"github.com/gogf/gf/v2/errors/gerror"
 	"github.com/gogf/gf/v2/net/ghttp"
 	"github.com/gogf/gf/v2/os/gfile"
-	"github.com/gogf/gf/v2/util/gconv"
 	"github.com/gogf/gf/v2/util/grand"
+	"github.com/google/uuid"
 )
 
 // TODO: 使用sync.Pool复用文件数据缓冲区
@@ -122,11 +122,11 @@ func (fu *FileUtils) EncryptAndSaveFile(file *ghttp.UploadFile) (ciphertext []by
 	copy(tailCopy, fu.filetail)
 	ciphertext = gcm.Seal(nil, fu.nonce, plain, tailCopy)
 
-	name = file.Filename + ".enc"
+	name = uuid.New().String() + ".enc"
 	savePath := gfile.Join(fu.encryptDir, name)
 	repeatCount := 1
 	for gfile.Exists(savePath) { // 防止重名
-		name = file.Filename + "." + gconv.String(repeatCount) + ".enc"
+		name = uuid.New().String() + ".enc"
 		savePath = gfile.Join(fu.encryptDir, name)
 		repeatCount++
 	}
@@ -203,6 +203,16 @@ func (fu *FileUtils) Delete(file *ghttp.UploadFile, path string) (err error) {
 		err = gfile.RemoveFile(deletePath)
 	} else {
 		err = gerror.Newf("%s 文件不存在", name)
+	}
+
+	return
+}
+func (fu *FileUtils) DeleteItem(filename string) (err error) {
+	deletePath := gfile.Join(fu.encryptDir, filename)
+	if gfile.Exists(deletePath) {
+		err = gfile.RemoveFile(deletePath)
+	} else {
+		err = gerror.Newf("%s 文件不存在", deletePath)
 	}
 
 	return

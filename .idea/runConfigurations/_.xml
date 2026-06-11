@@ -1,13 +1,14 @@
 <component name="ProjectRunConfigurationManager">
-  <configuration default="false" name="Shamir v3实现 - 全量测试" type="GoTestRunConfiguration" factoryName="Go Test">
+  <configuration default="false" name="份额刷新 业务测试" type="GoTestRunConfiguration" factoryName="Go Test">
     <module name="CryptographyDesign" />
-    <working_directory value="$PROJECT_DIR$/backend/pkg/shamir/v3" />
+    <working_directory value="$PROJECT_DIR$/backend/tests/file_upload_and_download" />
     <root_directory value="$PROJECT_DIR$/backend" />
     <kind value="PACKAGE" />
-    <package value="backend/pkg/shamir/v3" />
+    <package value="backend/tests/file_upload_and_download" />
     <directory value="$PROJECT_DIR$" />
     <filePath value="$PROJECT_DIR$" />
     <framework value="gotest" />
+    <pattern value="^\QTestShareRefresh\E$" />
     <method v="2" />
   </configuration>
 </component>
