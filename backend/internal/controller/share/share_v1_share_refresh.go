@@ -312,6 +312,7 @@ func (c *ControllerV1) ShareRefresh(ctx context.Context, req *v1.ShareRefreshReq
 				"share_base64": gbase64.EncodeToString(share),
 				"status":       dao.ShareStatusActive,
 
+				"expire_at":  c.iu.ExpireAt(),
 				"updated_at": gtime.Now(), // 手动刷新
 			})
 		}

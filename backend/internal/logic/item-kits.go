@@ -21,7 +21,9 @@ func NewItemUtils(options ...ItemUtilOptionFunc) *ItemUtils {
 	return utils
 }
 func (iu *ItemUtils) BuildWithConfig(cfg config.Item) {
-	iu.shareExpire = time.Duration(cfg.RawShareExpire) * time.Second
+	if cfg.RawShareExpire != 0 {
+		iu.shareExpire = time.Duration(cfg.RawShareExpire) * time.Second
+	}
 }
 
 func (iu *ItemUtils) ExpireAt() time.Time {
