@@ -24,6 +24,7 @@ type ControllerV1 struct {
 
 	hu *logic.HashUtils
 	cu logic.ICryptoUtils
+	iu *logic.ItemUtils
 }
 
 type OptionFunc func(c *ControllerV1)
@@ -33,6 +34,7 @@ func NewV1(options ...OptionFunc) share.IShareV1 {
 		options: &option{},
 		hu:      logic.NewHashUtils(),
 		cu:      crypv2.NewICryptoUtils(),
+		iu:      logic.NewItemUtils(),
 	}
 
 	ctrl.injectDefaultConfig()
@@ -77,6 +79,7 @@ func WithCryptoConfig(cfg *config.Item) OptionFunc {
 func (c *ControllerV1) build() {
 	c.hu.BuildWithConfig(c.options.argonConfig)
 	c.cu.BuildWithConfig(*c.options.cryptoConfig)
+	c.iu.BuildWithConfig(*c.options.cryptoConfig)
 }
 
 type Msg struct { // 用于SSE期间做回复
