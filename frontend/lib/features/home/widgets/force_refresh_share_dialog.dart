@@ -80,8 +80,11 @@ class _ForceRefreshShareDialogState
     final state = ref.watch(shareRefreshProvider);
     final colorScheme = Theme.of(context).colorScheme;
 
-    // SSE 完成后切换到结果阶段
-    if (_phase == _Phase.progress && state.result != null) {
+    // SSE 完成 + 保存完成后切换到结果阶段
+    if (_phase == _Phase.progress &&
+        state.result != null &&
+        !state.isRefreshing &&
+        state.errorMessage == null) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (mounted && _phase == _Phase.progress) {
           setState(() => _phase = _Phase.result);

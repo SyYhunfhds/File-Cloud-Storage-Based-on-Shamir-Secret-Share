@@ -27,7 +27,7 @@ class ShareRefreshService {
     required int itemId,
     String? recoveryCode,
     String? deviceShare,
-    required void Function(ShareRefreshProgressMessage msg) onProgress,
+    required Future<void> Function(ShareRefreshProgressMessage msg) onProgress,
     required void Function(String error) onError,
   }) async {
     _client?.close();
@@ -62,7 +62,7 @@ class ShareRefreshService {
           .transform(const LineSplitter());
 
       _subscription = lineStream.listen(
-        (line) {
+        (line) async {
           final trimmed = line.trim();
           if (trimmed.isEmpty) return;
           if (trimmed.startsWith(':')) return; // SSE 心跳/注释行
@@ -71,7 +71,7 @@ class ShareRefreshService {
             final json = jsonDecode(trimmed) as Map<String, dynamic>;
             final msg = ShareRefreshProgressMessage.fromJson(json);
             debugPrint('[SSE] 收到消息: progress=${msg.progress}, message=${msg.message}');
-            onProgress(msg);
+            await onProgress(msg);
 
             // progress=100 或有 data → 完成，关闭流
             if (msg.progress >= 100 || msg.data != null) {
