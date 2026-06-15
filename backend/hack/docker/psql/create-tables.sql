@@ -74,17 +74,6 @@ using(
     );
 
 -- 份额表 shares
-create table if not exists public.shares (
-    id serial primary key,
-    item_id int references items (id) on delete cascade on update cascade,
-    auth_share bytea not null,
-    recovery_code_hash bytea not null,
-    recovery_share bytea not null,
-    version int default 1,
-    created_at timestamp default now(),
-    updated_at timestamp default now()
-);
--- alter table public.shares rename column device_share to auth_share;
 -- 一个更好的版本
 create table if not exists public.shares (
     id serial primary key,
@@ -98,9 +87,14 @@ create table if not exists public.shares (
     code_hash text null, -- 用于RecoveryShare的恢复码哈希值
     version int default 1,
     status varchar(10) default 'active', -- 份额状态: active / expired / revoked
+
+    expire_at timestamp null default now() + interval '1 hour', -- 份额过期时间; 为了向前兼容, 所以这个字段可以为空
     created_at timestamp default now(),
     updated_at timestamp default now()
 );
+-- 临时加一列
+alter table public.shares add column expire_at timestamp null default now() + interval '1 hour';
+
 create unique index unique_share_status on public.shares (item_id, user_id, share_type, status);
 create unique index unique_user_type on public.shares (item_id, user_id, share_type);
 

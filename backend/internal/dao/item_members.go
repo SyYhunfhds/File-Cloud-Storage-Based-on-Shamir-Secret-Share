@@ -30,7 +30,7 @@ const (
 
 type ItemSubmitStatus = int // 申请审批状态
 const (
-	SubmissionRemoved  ItemSubmitStatus = 0 // 已移除
-	SubmissionPending                   = 1 // 待审批
-	SubmissionApproved                  = 2 // 审批通过
+	SubmissionRemoved  ItemSubmitStatus = iota // 已移除
+	SubmissionApproved                         // 审批通过
+	SubmissionPending                          // 待审批
 )

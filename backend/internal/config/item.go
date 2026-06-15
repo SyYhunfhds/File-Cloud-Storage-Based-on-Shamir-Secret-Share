@@ -1,6 +1,10 @@
 package config
 
-import "github.com/gogf/gf/v2/util/grand"
+import (
+	"time"
+
+	"github.com/gogf/gf/v2/util/grand"
+)
 
 // Item
 //
@@ -8,6 +12,7 @@ import "github.com/gogf/gf/v2/util/grand"
 type Item struct {
 	ItemStorage
 	ItemSeal
+	ItemEtc
 }
 
 func DefaultItemConfig() Item {
@@ -21,6 +26,9 @@ func DefaultItemConfig() Item {
 			ShareKey: grand.S(32),
 			KeySize:  32,
 			Nonce:    grand.S(12),
+		},
+		ItemEtc: ItemEtc{
+			RawShareExpire: int64((5 * time.Minute).Seconds()), // 默认5分钟过期时间
 		},
 	}
 }
@@ -38,4 +46,9 @@ type ItemSeal struct {
 
 	KeySize int    `yaml:"key_size" json:"key_size"` // AES密钥长度
 	Nonce   string `yaml:"nonce" json:"nonce"`
+}
+
+// ItemEtc 杂项配置
+type ItemEtc struct {
+	RawShareExpire int64 `yaml:"share_expire" json:"share_expire"` // 份额有效时间, 单位为秒
 }

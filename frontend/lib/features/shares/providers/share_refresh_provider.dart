@@ -84,7 +84,7 @@ class ShareRefreshNotifier extends Notifier<ShareRefreshState> {
       itemId: itemId,
       deviceShare: deviceShare,
       recoveryCode: recoveryCode,
-      onProgress: (msg) {
+      onProgress: (msg) async {
         state = state.copyWith(
           progress: msg.progress,
           currentMessage: msg.message,
@@ -95,7 +95,7 @@ class ShareRefreshNotifier extends Notifier<ShareRefreshState> {
           state = state.copyWith(isRefreshing: false);
           final combinedId =
               '${ref.read(authProvider).userId}_${ref.read(authProvider).userName}';
-          _saveRefreshedShare(itemId, msg.data, combinedId);
+          await _saveRefreshedShare(itemId, msg.data, combinedId);
         }
       },
       onError: (error) {
@@ -142,6 +142,10 @@ class ShareRefreshNotifier extends Notifier<ShareRefreshState> {
       debugPrint('[ShareRefresh] itemId=$itemId 新份额已保存');
     } catch (e) {
       debugPrint('[ShareRefresh] 保存刷新后份额失败: $e');
+      state = state.copyWith(
+        errorMessage: '保存新份额失败: $e',
+        isRefreshing: false,
+      );
     }
   }
 

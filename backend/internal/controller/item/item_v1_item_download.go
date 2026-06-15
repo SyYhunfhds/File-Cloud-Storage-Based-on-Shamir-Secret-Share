@@ -86,8 +86,9 @@ select
 	// 如果不是所有者, 再检查是不是member
 	if !sqlV.BelongToUser {
 		sqlV.IsMemberValid, err = dao.ItemMembers.Ctx(ctx).
-			Where("id", sqlV.ItemId).
+			Where("item_id", sqlV.ItemId).
 			Where("member_id", ac.Id).
+			Where("status", dao.SubmissionApproved).
 			Exist()
 		if err != nil {
 			span.SetStatus(codes.Error, "无法确认用户是否为指定文件的Member")
@@ -131,7 +132,8 @@ select
 	err = dao.Shares.Ctx(ctx).Raw(`
 select 
     share_base64 as auth_share 
-from public.shares where item_id = ? and share_type = ? and status = ? and user_id = ?`, sqlV.ItemId, dao.ShareTypeAuth, dao.ShareStatusActive, ac.Id).Scan(&sqlV)
+from public.shares where item_id = ? and share_type = ? and status = ?`,
+		sqlV.ItemId, dao.ShareTypeAuth, dao.ShareStatusActive).Scan(&sqlV)
 	if err != nil {
 		r.Response.WriteJson(v1.ItemDownloadRes{
 			Code:    http.StatusInternalServerError,

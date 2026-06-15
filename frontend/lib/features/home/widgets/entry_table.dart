@@ -10,7 +10,10 @@ import '../../items/services/item_api_service.dart';
 import '../../auth/providers/auth_provider.dart';
 import '../../download/providers/download_provider.dart';
 import '../../shares/providers/share_providers.dart';
+import '../../shares/services/share_storage_service.dart';
+import '../../shares/services/crypto_service.dart';
 import '../providers/entry_provider.dart';
+import 'force_refresh_share_dialog.dart';
 
 /// 财务条目数据表格
 ///
@@ -306,7 +309,7 @@ class _EntryTableState extends ConsumerState<EntryTable> {
           _headerCell('上传时间', 110),
           _headerCell('修改时间', 110),
           _headerCell('可下载', 60),
-          _headerCell('操作', 220),
+          _headerCell('操作', 280),
         ],
       ),
     );
@@ -351,10 +354,14 @@ class _EntryTableState extends ConsumerState<EntryTable> {
             ),
           ),
           SizedBox(
-            width: 220,
+            width: 280,
             child: Row(
               mainAxisSize: MainAxisSize.min,
               children: [
+                if (entry.owner == ref.read(authProvider).userName)
+                  _actionButton('强制刷新份额',
+                      () => _handleForceRefresh(entry)),
+                const SizedBox(width: 4),
                 _actionButton('详情', () {
                   debugPrint('[详情] itemId=${entry.itemId}');
                 }),
@@ -393,6 +400,36 @@ class _EntryTableState extends ConsumerState<EntryTable> {
         ),
       ),
     );
+  }
+
+  Future<void> _handleForceRefresh(ItemInfo entry) async {
+    final auth = ref.read(authProvider);
+    final combinedId = '${auth.userId}_${auth.userName}';
+
+    // 从 Hive 加载并解密 Device Share
+    final storage = ShareStorageService();
+    final record = await storage.get(combinedId, entry.itemId);
+    if (record == null) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('未找到该条目的本地份额，无法刷新')),
+        );
+      }
+      return;
+    }
+    final deviceShare = await ShareCryptoService.decrypt(
+      record.encryptedShare,
+      combinedId,
+    );
+
+    if (context.mounted) {
+      await ForceRefreshShareDialog.show(
+        context,
+        itemId: entry.itemId,
+        itemName: entry.filename,
+        deviceShare: deviceShare,
+      );
+    }
   }
 
   Widget _actionButton(String label, VoidCallback? onPressed) {
