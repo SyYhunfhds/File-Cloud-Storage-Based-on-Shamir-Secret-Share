@@ -132,7 +132,8 @@ select
 	err = dao.Shares.Ctx(ctx).Raw(`
 select 
     share_base64 as auth_share 
-from public.shares where item_id = ? and share_type = ? and status = ? and user_id = ?`, sqlV.ItemId, dao.ShareTypeAuth, dao.ShareStatusActive, ac.Id).Scan(&sqlV)
+from public.shares where item_id = ? and share_type = ? and status = ?`,
+		sqlV.ItemId, dao.ShareTypeAuth, dao.ShareStatusActive).Scan(&sqlV)
 	if err != nil {
 		r.Response.WriteJson(v1.ItemDownloadRes{
 			Code:    http.StatusInternalServerError,
