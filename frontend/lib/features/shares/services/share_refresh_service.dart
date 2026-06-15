@@ -34,6 +34,7 @@ class ShareRefreshService {
     _client = HttpClient();
     _client!.connectionTimeout = const Duration(seconds: 10);
     final completer = Completer<void>();
+    var lastProgress = 0;
 
     try {
       final uri = Uri.parse('$baseUrl/v1/protected/share/refresh/');
@@ -70,6 +71,7 @@ class ShareRefreshService {
           try {
             final json = jsonDecode(trimmed) as Map<String, dynamic>;
             final msg = ShareRefreshProgressMessage.fromJson(json);
+            lastProgress = msg.progress;
             debugPrint('[SSE] 收到消息: progress=${msg.progress}, message=${msg.message}');
             await onProgress(msg);
 
@@ -94,12 +96,12 @@ class ShareRefreshService {
           }
         },
         onDone: () {
-          if (!completer.isCompleted) {
-            debugPrint('[SSE] 流意外终止');
+          if (!completer.isCompleted && lastProgress < 100) {
+            debugPrint('[SSE] 流意外终止（最后进度=$lastProgress）');
             onError('份额刷新异常中断，请联系管理员');
             completer.complete();
           } else {
-            debugPrint('[SSE] 流正常关闭（已完成状态）');
+            debugPrint('[SSE] 流正常关闭（lastProgress=$lastProgress）');
           }
         },
         cancelOnError: false,
