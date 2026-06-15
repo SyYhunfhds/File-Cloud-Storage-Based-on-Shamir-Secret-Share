@@ -53,6 +53,11 @@ class AppSidebarNav extends StatelessWidget {
             label: Text('审计管理'),
           ),
           NavigationRailDestination(
+            icon: Icon(Icons.cloud_download_outlined),
+            selectedIcon: Icon(Icons.cloud_download),
+            label: Text('服务器份额'),
+          ),
+          NavigationRailDestination(
             icon: Icon(Icons.settings_outlined),
             selectedIcon: Icon(Icons.settings),
             label: Text('设置'),
