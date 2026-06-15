@@ -86,8 +86,9 @@ select
 	// 如果不是所有者, 再检查是不是member
 	if !sqlV.BelongToUser {
 		sqlV.IsMemberValid, err = dao.ItemMembers.Ctx(ctx).
-			Where("id", sqlV.ItemId).
+			Where("item_id", sqlV.ItemId).
 			Where("member_id", ac.Id).
+			Where("status", dao.SubmissionApproved).
 			Exist()
 		if err != nil {
 			span.SetStatus(codes.Error, "无法确认用户是否为指定文件的Member")
