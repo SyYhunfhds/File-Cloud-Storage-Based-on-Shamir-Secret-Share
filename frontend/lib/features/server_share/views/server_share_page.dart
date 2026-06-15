@@ -91,7 +91,9 @@ class _ServerSharePageState extends ConsumerState<ServerSharePage> {
 
     if (!_hasInit) {
       _hasInit = true;
-      ref.read(serverShareProvider.notifier).fetch();
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        ref.read(serverShareProvider.notifier).fetch();
+      });
     }
 
     return isWide
