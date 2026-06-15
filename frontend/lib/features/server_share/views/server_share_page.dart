@@ -153,13 +153,21 @@ class _ServerSharePageState extends ConsumerState<ServerSharePage> {
   // ===========================================================================
 
   Widget _buildHeader() {
+    final state = ref.watch(serverShareProvider);
+    final isLoading = state.isLoading || state.isPulling;
     return Row(
       children: [
-        Icon(Icons.cloud_download, size: 24, color: Theme.of(context).colorScheme.primary),
+        Icon(Icons.cloud_download,
+            size: 24, color: Theme.of(context).colorScheme.primary),
         const SizedBox(width: 8),
-        Text(
-          '服务器份额',
-          style: Theme.of(context).textTheme.titleLarge,
+        Text('服务器份额', style: Theme.of(context).textTheme.titleLarge),
+        const Spacer(),
+        IconButton(
+          onPressed: isLoading
+              ? null
+              : () => ref.read(serverShareProvider.notifier).fetch(),
+          icon: const Icon(Icons.refresh),
+          tooltip: '刷新列表',
         ),
       ],
     );
