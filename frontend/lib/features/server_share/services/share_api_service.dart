@@ -19,14 +19,16 @@ class ShareApiService {
     int size = 20,
   }) async {
     final url = Uri.parse('$baseUrl/v1/protected/share/list');
-    final response = await http.post(
-      url,
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': 'Bearer $token',
-      },
-      body: jsonEncode({'page': page, 'size': size}),
-    );
+    final response = await http
+        .post(
+          url,
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': 'Bearer $token',
+          },
+          body: jsonEncode({'page': page, 'size': size}),
+        )
+        .timeout(const Duration(seconds: 15));
     return parseApiResponse<ShareListRes>(
       response.body,
       (json) => ShareListRes.fromJson(json),
@@ -39,14 +41,16 @@ class ShareApiService {
     required List<int> shareIds,
   }) async {
     final url = Uri.parse('$baseUrl/v1/protected/share/pull');
-    final response = await http.post(
-      url,
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': 'Bearer $token',
-      },
-      body: jsonEncode({'share_ids': shareIds}),
-    );
+    final response = await http
+        .post(
+          url,
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': 'Bearer $token',
+          },
+          body: jsonEncode({'share_ids': shareIds}),
+        )
+        .timeout(const Duration(seconds: 15));
     return parseApiResponse<SharePullRes>(
       response.body,
       (json) => SharePullRes.fromJson(json),

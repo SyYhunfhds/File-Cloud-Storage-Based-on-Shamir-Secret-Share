@@ -20,12 +20,11 @@ class ServerSharePage extends ConsumerStatefulWidget {
 }
 
 class _ServerSharePageState extends ConsumerState<ServerSharePage> {
-  late Future<void> _initFuture;
+  bool _hasInit = false;
 
   @override
   void initState() {
     super.initState();
-    _initFuture = ref.read(serverShareProvider.notifier).fetch();
   }
 
   // ===========================================================================
@@ -90,12 +89,14 @@ class _ServerSharePageState extends ConsumerState<ServerSharePage> {
     final screenWidth = MediaQuery.sizeOf(context).width;
     final isWide = screenWidth >= AppConstants.mediumBreakpoint;
 
-    return FutureBuilder(
-      future: _initFuture,
-      builder: (context, snapshot) => isWide
-          ? _buildWideLayout(colorScheme)
-          : _buildNarrowLayout(colorScheme),
-    );
+    if (!_hasInit) {
+      _hasInit = true;
+      ref.read(serverShareProvider.notifier).fetch();
+    }
+
+    return isWide
+        ? _buildWideLayout(colorScheme)
+        : _buildNarrowLayout(colorScheme);
   }
 
   // ===========================================================================

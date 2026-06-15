@@ -108,8 +108,9 @@ class ServerShareNotifier extends Notifier<ServerShareState> {
           isLoading: false,
         );
       }
-    } catch (e) {
+    } catch (e, stack) {
       debugPrint('[ServerShare] 加载列表异常: $e');
+      debugPrint('[ServerShare] 堆栈: $stack');
       state = state.copyWith(
         errorMessage: '网络请求失败，请检查网络连接',
         isLoading: false,
