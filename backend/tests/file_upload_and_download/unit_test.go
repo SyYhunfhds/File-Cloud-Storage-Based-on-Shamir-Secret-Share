@@ -158,7 +158,7 @@ func testUploadAnyFile(t *testing.T, token string, generate fileGenFunc) {
 		t.Errorf("upload file failed: %v", err)
 		return
 	}
-	t.Logf("上传HTML文件响应: %v", rs)
+	// t.Logf("上传HTML文件响应: %v", rs)
 
 	var uploadRes = itemv1.ItemSubmitRes{}
 	if err = gjson.DecodeTo(rs, &uploadRes); err != nil {
@@ -195,6 +195,7 @@ func testUploadAnyFile(t *testing.T, token string, generate fileGenFunc) {
 	}
 
 	currCrc32 := crc32.ChecksumIEEE(downloadedFile)
+	t.Logf("上传前文件校验和为 %d, 下载后文件校验和为 %d", originalCrc, currCrc32)
 	if currCrc32 != originalCrc {
 		t.Errorf("文件CRC32校验失败, 原: %v, 下载后: %v", originalCrc, currCrc32)
 		return

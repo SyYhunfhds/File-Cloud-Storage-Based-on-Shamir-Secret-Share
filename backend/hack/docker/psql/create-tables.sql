@@ -57,7 +57,6 @@ create table if not exists public.items (
     changed_at timestamp default now(), -- 修改时间
     deleted_at timestamp default null -- 删除时间
 );
-alter table public.items add column savename varchar(255) unique not null default '';
 
 -- 记得给owner_id补一个索引
 create index items_owner_id_index on items (owner_id);
