@@ -1,0 +1,250 @@
+=== RUN   TestJWT_NewWithClaims_Success
+--- PASS: TestJWT_NewWithClaims_Success (0.00s)
+=== RUN   TestJWT_GetSignedString_HS256
+--- PASS: TestJWT_GetSignedString_HS256 (0.00s)
+=== RUN   TestJWT_ParseAndVerify_ValidToken
+--- PASS: TestJWT_ParseAndVerify_ValidToken (0.00s)
+=== RUN   TestJWT_Claims_RoundTrip
+--- PASS: TestJWT_Claims_RoundTrip (0.00s)
+=== RUN   TestJWT_ParseAndVerify_ExpiredToken
+--- PASS: TestJWT_ParseAndVerify_ExpiredToken (0.00s)
+=== RUN   TestJWT_ParseAndVerify_WrongSecret
+--- PASS: TestJWT_ParseAndVerify_WrongSecret (0.00s)
+=== RUN   TestJWT_ParseAndVerify_TamperedPayload
+--- PASS: TestJWT_ParseAndVerify_TamperedPayload (0.00s)
+=== RUN   TestJWT_ParseAndVerify_EmptyToken
+--- PASS: TestJWT_ParseAndVerify_EmptyToken (0.00s)
+=== RUN   TestJWT_ParseAndVerify_MalformedToken
+--- PASS: TestJWT_ParseAndVerify_MalformedToken (0.00s)
+=== RUN   TestJWT_AlgorithmConfusion_None
+    cookie-kits_test.go:291: alg=none token correctly rejected: token signature is invalid: token is unverifiable: 'none' signature type is not allowed
+--- PASS: TestJWT_AlgorithmConfusion_None (0.00s)
+=== RUN   TestCryptoV2_EncryptDecrypt_Basic
+    crypto-kits-v2_test.go:49: 鍩虹鍔犺В瀵嗗線杩旀垚鍔? 鏁版嵁澶у皬: 35 bytes, CRC32: 2152834723
+--- PASS: TestCryptoV2_EncryptDecrypt_Basic (0.00s)
+=== RUN   TestCryptoV2_ChainAfterEncrypt_ChainAfterDecrypt_RoundTrip
+    crypto-kits-v2_test.go:78: ChainAfter* 鍩虹寰€杩旀垚鍔?(鏃犲悗澶勭悊), CRC32: 142641433
+--- PASS: TestCryptoV2_ChainAfterEncrypt_ChainAfterDecrypt_RoundTrip (0.00s)
+=== RUN   TestCryptoV2_ChainDecrypt_RoundTrip
+    crypto-kits-v2_test.go:100: ChainDecrypt寰€杩旀垚鍔? CRC32: 1504821588
+--- PASS: TestCryptoV2_ChainDecrypt_RoundTrip (0.00s)
+=== RUN   TestCryptoV2_Shamir_SplitRecover_Basic
+    crypto-kits-v2_test.go:127: Shamir Split/Recover (2-of-3) 鎴愬姛, secret=shamir-secret-key-32-bytes-test!!
+--- PASS: TestCryptoV2_Shamir_SplitRecover_Basic (0.00s)
+=== RUN   TestCryptoV2_Shamir_JsonRoundTrip
+    crypto-kits-v2_test.go:154: SplitToJson/RecoverFromJson 寰€杩旀垚鍔?--- PASS: TestCryptoV2_Shamir_JsonRoundTrip (0.00s)
+=== RUN   TestCryptoV2_Decrypt_WrongKey
+    crypto-kits-v2_test.go:172: 閿欒瀵嗛挜瑙ｅ瘑姝ｇ‘鎷掔粷: cipher: message authentication failed
+--- PASS: TestCryptoV2_Decrypt_WrongKey (0.00s)
+=== RUN   TestCryptoV2_Decrypt_TamperedCiphertext
+    crypto-kits-v2_test.go:196: 绡℃敼瀵嗘枃姝ｇ‘瑙﹀彂GCM璁よ瘉澶辫触: cipher: message authentication failed
+--- PASS: TestCryptoV2_Decrypt_TamperedCiphertext (0.00s)
+=== RUN   TestCryptoV2_Decrypt_TruncatedCiphertext
+    crypto-kits-v2_test.go:214: 鎴柇瀵嗘枃姝ｇ‘鎷掔粷: cipher: message authentication failed
+--- PASS: TestCryptoV2_Decrypt_TruncatedCiphertext (0.00s)
+=== RUN   TestCryptoV2_Shamir_Recover_WrongShare
+    crypto-kits-v2_test.go:248: 浼€犱唤棰濋潤榛樹骇鐢熼敊璇粨鏋?(棰勬湡琛屼负), secret鈮爎ecovered
+--- PASS: TestCryptoV2_Shamir_Recover_WrongShare (0.00s)
+=== RUN   TestCryptoV2_Shamir_Recover_EmptyShares
+    crypto-kits-v2_test.go:260: 绌轰唤棰濇仮澶嶆纭繑鍥瀍rror: 浠介鏈揪鍒伴棬闄? 鏃犳硶杩樺師绉樺瘑
+--- PASS: TestCryptoV2_Shamir_Recover_EmptyShares (0.00s)
+=== RUN   TestCryptoV2_ChainBeforeEncrypt_Bug_Demo
+    crypto-kits-v2_test.go:276: === ChainBeforeEncrypt Bug 婕旂ず ===
+    crypto-kits-v2_test.go:277: Bug浣嶇疆: crypto-kits-v2.go L148
+    crypto-kits-v2_test.go:278: 閿欒浠ｇ爜: ciphertext, err = fn(ctx, ciphertext)
+    crypto-kits-v2_test.go:279: 璇存槑: ciphertext 姝ゆ椂涓洪浂鍊糿il, Base64鍦╪il涓婃墽琛屽苟涓㈠純缁撴灉
+    crypto-kits-v2_test.go:280: 缁撴灉: L154 Encrypt(ctx, key, plaintext) 鐩存帴鍔犲瘑浜嗗師濮嬫槑鏂囷紙鏈粡Base64缂栫爜锛?    crypto-kits-v2_test.go:287: ChainBeforeEncrypt杩斿洖瀵嗘枃闀垮害: 90 bytes
+    crypto-kits-v2_test.go:295: 棰勬湡澶辫触: ChainAfterDecrypt鏃犳硶瑙ｇ爜 鈫?base64.StdEncoding.Decode failed: illegal base64 data at input byte 3
+    crypto-kits-v2_test.go:296: 鏍瑰洜: 瀵嗘枃鏈粡Base64缂栫爜, Decrypt寰楀埌鍘熷鏄庢枃鍚庡皾璇旴ase64.Decode 鈫?'illegal base64 data at input byte 0'
+    crypto-kits-v2_test.go:307: 楠岃瘉: 鐩存帴Decrypt鎴愬姛 鈫?璇佹槑ChainBeforeEncrypt浜у嚭鐨勭‘瀹炴槸鍘熷AES-GCM瀵嗘枃 (鏈粡Base64)
+--- PASS: TestCryptoV2_ChainBeforeEncrypt_Bug_Demo (0.00s)
+=== RUN   TestCryptoV2_ChainBeforeDecrypt_Bug_Demo
+    crypto-kits-v2_test.go:320: === ChainBeforeDecrypt Bug 婕旂ず ===
+    crypto-kits-v2_test.go:321: Bug浣嶇疆: crypto-kits-v2.go L209-210
+    crypto-kits-v2_test.go:322: 閿欒浠ｇ爜: plaintext, err = fn(ctx, plaintext)
+    crypto-kits-v2_test.go:323: 璇存槑: plaintext 姝ゆ椂涓洪浂鍊糿il, Base64Decode鍦╪il涓婃墽琛屽苟涓㈠純缁撴灉
+    crypto-kits-v2_test.go:324: 缁撴灉: L216 Decrypt(ctx, key, ciphertext) 鐩存帴瑙ｅ瘑鍘熷Base64鏂囨湰锛堟湭鍏堣В鐮侊級
+    crypto-kits-v2_test.go:331: ChainAfterEncrypt鐢熸垚姝ｇ‘瀵嗘枃(Base64鏍煎紡), 闀垮害: 124 bytes
+    crypto-kits-v2_test.go:338: 棰勬湡澶辫触: ChainBeforeDecrypt瑙ｅ瘑澶辫触 鈫?cipher: message authentication failed
+    crypto-kits-v2_test.go:339: 鏍瑰洜: Base64Decode鍦╪il涓婃墽琛?涓㈠純), 鐒跺悗Decrypt鐩存帴瑙ｅ瘑Base64鏂囨湰
+    crypto-kits-v2_test.go:340: 鈫?gcm.Open鏀跺埌Base64瀛楃涓茶€岄潪浜岃繘鍒跺瘑鏂?鈫?GCM璁よ瘉澶辫触 鈫?'message authentication failed'
+--- PASS: TestCryptoV2_ChainBeforeDecrypt_Bug_Demo (0.00s)
+=== RUN   TestCryptoV2_ChainBug_RootCause_Comparison
+    crypto-kits-v2_test.go:346: === 缂栫爜閾綛ug鏍瑰洜瀵规瘮 ===
+    crypto-kits-v2_test.go:347: 
+    crypto-kits-v2_test.go:348: | 鏂规硶                | 琛屽彿 | 绗竴涓弬鏁?(寰幆鍙橀噺) | 琛屼负                         |
+    crypto-kits-v2_test.go:349: |---------------------|------|----------------------|------------------------------|
+    crypto-kits-v2_test.go:350: | ChainAfterEncrypt   | L137 | ciphertext (鏈夋晥瀵嗘枃) | fn鍦ㄥ瘑鏂囦笂鎵цBase64 鈫?姝ｇ‘  |
+    crypto-kits-v2_test.go:351: | ChainBeforeEncrypt  | L148 | ciphertext (nil!)    | fn鍦╪il涓婃墽琛孊ase64 鈫?涓㈠純   |
+    crypto-kits-v2_test.go:352: | ChainAfterDecrypt   | L231 | plaintext  (鏈夋晥鏄庢枃) | fn鍦ㄦ槑鏂囦笂鎵цBase64瑙?鈫?姝ｇ‘|
+    crypto-kits-v2_test.go:353: | ChainBeforeDecrypt  | L210 | plaintext  (nil!)    | fn鍦╪il涓婃墽琛孊ase64瑙?鈫?涓㈠純 |
+    crypto-kits-v2_test.go:354: 
+    crypto-kits-v2_test.go:355: 缁撹: ChainBefore* 绯诲垪閮介敊璇湴灏嗙洰鏍囧彉閲忎紶缁欎簡鍚庡鐞嗗嚱鏁? 鑰岄潪婧愬彉閲忋€?    crypto-kits-v2_test.go:356:   ChainBeforeEncrypt 搴斿啓: plaintext, err = fn(ctx, plaintext)  // 鑰岄潪 ciphertext
+    crypto-kits-v2_test.go:357:   ChainBeforeDecrypt 搴斿啓: ciphertext, err = fn(ctx, ciphertext) // 鑰岄潪 plaintext
+--- PASS: TestCryptoV2_ChainBug_RootCause_Comparison (0.00s)
+=== RUN   TestCryptoV2_ChainBug_WhyMustFail
+    crypto-kits-v2_test.go:378: === 缂栫爜閾綛ug蹇呯劧澶辫触鎬ц瘉鏄?===
+    crypto-kits-v2_test.go:379: 
+    crypto-kits-v2_test.go:380: --- Case A: ChainBeforeEncrypt 缂栫爜涓㈠け ---
+    crypto-kits-v2_test.go:381: Bug: L148 fn(ctx, ciphertext) 鈫?ciphertext 姝ゆ椂涓?nil
+    crypto-kits-v2_test.go:382: 缁撴灉: Base64 缂栫爜鍦?nil 涓婃墽琛?鈫?琚涪寮?鈫?鍔犲瘑鏃剁洿鎺ョ敤鍘熷鏄庢枃
+    crypto-kits-v2_test.go:383: 涓嬫父鑻ユ湡鏈?Base64鈫扐ES-GCM 鐨勯€嗗悜杩囩▼锛屽垯瀵嗘枃涓嶅惈Base64 鈫?蹇呯劧澶辫触
+    crypto-kits-v2_test.go:396: 璇佹槑1: 瀵嗘枃涓嶆槸鏈夋晥Base64 鈫?浠讳綍Base64瑙ｇ爜鍣ㄥ繀鐒跺け璐?    crypto-kits-v2_test.go:407: 璇佹槑2: 鐩存帴Decrypt鎴愬姛 鈫?瀵嗘枃纭疄鏄函AES-GCM浜岃繘鍒?(涓嶅惈Base64)
+    crypto-kits-v2_test.go:409: 
+    crypto-kits-v2_test.go:410: --- Case B: ChainBeforeDecrypt 瑙ｇ爜涓㈠け ---
+    crypto-kits-v2_test.go:411: Bug: L210 fn(ctx, plaintext) 鈫?plaintext 姝ゆ椂涓?nil
+    crypto-kits-v2_test.go:412: 缁撴灉: Base64Decode 鍦?nil 涓婃墽琛?鈫?琚涪寮?鈫?鐩存帴鐢?Base64 鏂囨湰鍋?AES-GCM 瑙ｅ瘑
+    crypto-kits-v2_test.go:421: 璇佹槑3: ChainAfterEncrypt浜у嚭鏄湁鏁圔ase64, 闀垮害=120
+    crypto-kits-v2_test.go:428: 璇佹槑4: ChainBeforeDecrypt 蹇呯劧澶辫触 鈫?cipher: message authentication failed
+    crypto-kits-v2_test.go:429: 鏍瑰洜: gcm.Open 鏀跺埌 Base64 ASCII 鏂囨湰鑰岄潪浜岃繘鍒跺瘑鏂?鈫?GCM 璁よ瘉蹇呯劧澶辫触
+    crypto-kits-v2_test.go:432: 
+    crypto-kits-v2_test.go:433: 缁撹: 涓や釜 Bug 閮藉洜涓洪敊璇殑鍙橀噺浼犻€掑鑷村悗澶勭悊鍑芥暟鍦?nil 涓婃墽琛屽苟琚涪寮?
+    crypto-kits-v2_test.go:434:   浣垮緱缂栫爜/瑙ｇ爜閾惧疄闄呬笂绛夊悓浜庣洿鎺?Encrypt/Decrypt, 瀹屽叏涓уけ浜嗙粍鍚堣兘鍔涖€?    crypto-kits-v2_test.go:435:   杩欎笉鏄伓鍙?Bug, 鑰屾槸閫昏緫閿欒瀵艰嚧鐨勫繀鐒舵€уけ璐ャ€?--- PASS: TestCryptoV2_ChainBug_WhyMustFail (0.00s)
+=== RUN   TestCryptoV2_ChainBug_Fix_Simulation
+    crypto-kits-v2_test.go:453: === 缂栫爜閾句慨澶嶆ā鎷?===
+    crypto-kits-v2_test.go:454: 
+    crypto-kits-v2_test.go:455: --- 閾捐矾1: 鍏圔ase64鍐岮ES-GCM (ChainBeforeEncrypt鐨勬纭涓? ---
+    crypto-kits-v2_test.go:456: 褰撳墠Bug: ChainBeforeEncrypt(L148)鍦╪il涓夿ase64 鈫?鐩存帴鍔犲瘑鏄庢枃
+    crypto-kits-v2_test.go:457: 姝ｇ‘琛屼负: 鍏?PEFBase64Encode(plaintext) 鈫?Encrypt(base64Result)
+    crypto-kits-v2_test.go:476: 閾捐矾1鎴愬姛: 鍏圔ase64鈫掑啀AES-GCM 鈫?瑙ｅ瘑鈫払ase64瑙ｇ爜 = 鍘熷鏄庢枃, CRC32=1443099078
+    crypto-kits-v2_test.go:478: 
+    crypto-kits-v2_test.go:479: --- 閾捐矾2: 鍏圓ES-GCM鍐岯ase64 (ChainAfterEncrypt鐨勬纭涓? ---
+    crypto-kits-v2_test.go:480: 瀹為檯涓?ChainAfterEncrypt 鏄纭殑 (鍏圗ncrypt鈫掑啀Base64)
+    crypto-kits-v2_test.go:494: 閾捐矾2鎴愬姛: AES-GCM鍔犲瘑鈫払ase64 鈫?Base64瑙ｇ爜鈫扐ES-GCM瑙ｅ瘑 = 鍘熷鏄庢枃, CRC32=1443099078
+    crypto-kits-v2_test.go:496: 
+    crypto-kits-v2_test.go:497: 缁撹: 涓や釜閾捐矾鐨勬墜鍔ㄤ慨澶嶇増鏈兘鑳芥纭線杩斻€?    crypto-kits-v2_test.go:498: 杩欒瘉鏄庣紪鐮侀摼璁捐鏈韩鏄纭笖鍚堢悊鐨勩€?    crypto-kits-v2_test.go:499: 褰撳墠 Bug 绾补鏄唬鐮佸眰闈㈢殑鍙橀噺璇敤 (ciphertext/plaintext vs 婧愬彉閲?銆?    crypto-kits-v2_test.go:500: 
+    crypto-kits-v2_test.go:501: 淇鏂规:
+    crypto-kits-v2_test.go:502:   ChainBeforeEncrypt L148: ciphertext鈫抪laintext, 涓斿悗缁璄ncrypt浣跨敤base64Encoded缁撴灉
+    crypto-kits-v2_test.go:503:   ChainBeforeDecrypt L210: plaintext鈫抍iphertext, 涓斿悗缁璂ecrypt浣跨敤瑙ｇ爜鍚庣粨鏋?--- PASS: TestCryptoV2_ChainBug_Fix_Simulation (0.00s)
+=== RUN   TestCryptoV2_Summary
+    crypto-kits-v2_test.go:611: 姹囨€绘姤鍛婂凡鍐欏叆: output\test_crypto-kits-v2_20260617_211416.log
+--- PASS: TestCryptoV2_Summary (0.01s)
+=== RUN   TestCryptoV1_GCM_EncryptProducesValidOutput
+    crypto-kits_test.go:63: GCMEncrypt浜у嚭闀垮害=54, nk闀垮害=32
+    crypto-kits_test.go:70: GCMEncrypt浜у嚭鏈夋晥, CRC32鍘熸枃: 2723235079
+--- PASS: TestCryptoV1_GCM_EncryptProducesValidOutput (0.00s)
+=== RUN   TestCryptoV1_GCM_Decrypt_ManualFormat
+    crypto-kits_test.go:104: 宸茬煡Bug: GCMDecrypt L227 payload鍒囩墖閿欒 + L230 浼犲叆瀹屾暣ciphertext浣滀负payload
+    crypto-kits_test.go:105: sealed闀垮害=46
+    crypto-kits_test.go:110: 棰勬湡: GCMDecrypt鎷掔粷鏍囧噯GCM瀵嗘枃 鈫?瀵嗘枃闀垮害涓嶈冻, 闇€鑷冲皯鍖呮嫭nonce銆乼ag鍜孉AD涓変釜閮ㄥ垎鍏?0瀛楄妭
+--- PASS: TestCryptoV1_GCM_Decrypt_ManualFormat (0.00s)
+=== RUN   TestCryptoV1_Shamir_SplitShare_RecoverShare_Basic
+    crypto-kits_test.go:126: deviceShare鍓?2瀛楃=eyJJbmRleCI6NDIsIlZhbHVlcyI6WzE3..., authShare闀垮害=156, recoveryShare闀垮害=156
+    crypto-kits_test.go:147: SplitShare/RecoverShare 寰€杩旀垚鍔?--- PASS: TestCryptoV1_Shamir_SplitShare_RecoverShare_Basic (0.00s)
+=== RUN   TestCryptoV1_EncryptAuthShare_DisabledBehavior
+    crypto-kits_test.go:164: 瀹夊叏娉ㄦ剰: EncryptAuthShare褰撳墠琚鐢?(杩斿洖鍘熷share, 鏃犲姞瀵嗕繚鎶?
+--- PASS: TestCryptoV1_EncryptAuthShare_DisabledBehavior (0.00s)
+=== RUN   TestCryptoV1_EncryptRecoveryShare_DisabledBehavior
+    crypto-kits_test.go:184: 瀹夊叏娉ㄦ剰: EncryptRecoveryShare褰撳墠琚鐢? 鐢熸垚nk=MXzX6YqBNTjRSynDmEFU9wFXanXARDsS
+--- PASS: TestCryptoV1_EncryptRecoveryShare_DisabledBehavior (0.00s)
+=== RUN   TestCryptoV1_AutoClear_ClearsKey
+    crypto-kits_test.go:212: autoClear姝ｇ‘娓呴浂瀵嗛挜
+--- PASS: TestCryptoV1_AutoClear_ClearsKey (0.00s)
+=== RUN   TestCryptoV1_GCMEncrypt_DifferentNonces
+    crypto-kits_test.go:239: Nonce鍞竴鎬ч獙璇侀€氳繃: 涓ゆ鍔犲瘑浜х敓涓嶅悓瀵嗘枃
+--- PASS: TestCryptoV1_GCMEncrypt_DifferentNonces (0.00s)
+=== RUN   TestCryptoV1_GCM_Decrypt_WrongKey
+    crypto-kits_test.go:274: 閿欒瀵嗛挜瑙ｅ瘑姝ｇ‘鎷掔粷: cipher: message authentication failed
+--- PASS: TestCryptoV1_GCM_Decrypt_WrongKey (0.00s)
+=== RUN   TestCryptoV1_GCM_Decrypt_TamperedCiphertext
+    crypto-kits_test.go:286: NewCipher: crypto/aes: invalid key size 31
+--- FAIL: TestCryptoV1_GCM_Decrypt_TamperedCiphertext (0.00s)
+=== RUN   TestCryptoV1_GCM_Decrypt_TruncatedCiphertext
+    crypto-kits_test.go:320: NewCipher: crypto/aes: invalid key size 30
+--- FAIL: TestCryptoV1_GCM_Decrypt_TruncatedCiphertext (0.00s)
+=== RUN   TestCryptoV1_GCM_Decrypt_EmptyCiphertext
+    crypto-kits_test.go:352: 绌哄瘑鏂囪В瀵嗘纭嫆缁? 瀵嗘枃闀垮害涓嶈冻, 闇€鑷冲皯鍖呮嫭nonce銆乼ag鍜孉AD涓変釜閮ㄥ垎鍏?0瀛楄妭
+--- PASS: TestCryptoV1_GCM_Decrypt_EmptyCiphertext (0.00s)
+=== RUN   TestCryptoV1_RecoverShare_WrongShare
+    crypto-kits_test.go:390: 閿欒浠介闈欓粯浜х敓閿欒缁撴灉 (棰勬湡琛屼负)
+--- PASS: TestCryptoV1_RecoverShare_WrongShare (0.00s)
+=== RUN   TestCryptoV1_RecoverShare_EmptyShares
+    crypto-kits_test.go:399: RecoverShare()杩斿洖nil (v1棰勬湡琛屼负)
+--- PASS: TestCryptoV1_RecoverShare_EmptyShares (0.00s)
+=== RUN   TestCryptoV1_Summary
+    crypto-kits_test.go:603: 姹囨€绘姤鍛婂凡鍐欏叆: output\test_crypto-kits_20260617_211416.log
+--- PASS: TestCryptoV1_Summary (0.00s)
+=== RUN   TestFileUtils_EncryptDecrypt_Basic
+    file-kits_test.go:62: 鍔犲瘑鎴愬姛, 瀵嗘枃闀垮害=57, key闀垮害=32
+    file-kits_test.go:73: FileUtils鍔犺В瀵嗗線杩旀垚鍔? CRC32: 83038438
+--- PASS: TestFileUtils_EncryptDecrypt_Basic (0.00s)
+=== RUN   TestFileUtils_Encrypt_RandomNonce
+    file-kits_test.go:101: 涓ゆ鍔犲瘑瀹屾垚, 瀵嗘枃1闀垮害=56, 瀵嗘枃2闀垮害=56
+--- PASS: TestFileUtils_Encrypt_RandomNonce (0.00s)
+=== RUN   TestFileUtils_ParseEncFilename_Basic
+    file-kits_test.go:119: ParseEncFilename('testfile.txt.1.enc') => basename='testfile', ext='txt'
+--- PASS: TestFileUtils_ParseEncFilename_Basic (0.00s)
+=== RUN   TestFileUtils_ParseEncFilename_Complex
+    file-kits_test.go:137: ParseEncFilename('archive.tar.gz.1.2.enc') => basename='archive', ext='tar.gz'
+    file-kits_test.go:150: ParseEncFilename('data.1.enc') => basename='data', ext=''
+    file-kits_test.go:163: ParseEncFilename('doc.pdf.1.2.3.4.enc') => basename='doc', ext='pdf'
+--- PASS: TestFileUtils_ParseEncFilename_Complex (0.00s)
+=== RUN   TestFileUtils_FileTail_MagicBytes
+    file-kits_test.go:187: filetail 'ITEM' 榄旀湳瀛楄妭楠岃瘉閫氳繃: 鍔犺В瀵嗗線杩旀纭?--- PASS: TestFileUtils_FileTail_MagicBytes (0.00s)
+=== RUN   TestFileUtils_Decrypt_WrongKey
+    file-kits_test.go:211: 閿欒瀵嗛挜瑙ｅ瘑姝ｇ‘鎷掔粷: cipher: message authentication failed
+--- PASS: TestFileUtils_Decrypt_WrongKey (0.00s)
+=== RUN   TestFileUtils_Decrypt_TamperedCiphertext
+    file-kits_test.go:238: 绡℃敼瀵嗘枃姝ｇ‘瑙﹀彂GCM璁よ瘉澶辫触: cipher: message authentication failed
+--- PASS: TestFileUtils_Decrypt_TamperedCiphertext (0.00s)
+=== RUN   TestFileUtils_Decrypt_TruncatedCiphertext
+    file-kits_test.go:259: 鎴柇瀵嗘枃姝ｇ‘鎷掔粷: cipher: message authentication failed
+--- PASS: TestFileUtils_Decrypt_TruncatedCiphertext (0.00s)
+=== RUN   TestFileUtils_Decrypt_NotAnEncFile
+    file-kits_test.go:283: 闈炲姞瀵嗘枃浠跺悕瑙ｆ瀽姝ｇ‘鎷掔粷
+--- PASS: TestFileUtils_Decrypt_NotAnEncFile (0.00s)
+=== RUN   TestFileUtils_Summary
+    file-kits_test.go:401: 姹囨€绘姤鍛婂凡鍐欏叆: output\test_file-kits_20260617_211416.log
+--- PASS: TestFileUtils_Summary (0.00s)
+=== RUN   TestArgon2_HashGen_Success
+--- PASS: TestArgon2_HashGen_Success (0.06s)
+=== RUN   TestArgon2_HashGen_DifferentInputs
+--- PASS: TestArgon2_HashGen_DifferentInputs (0.13s)
+=== RUN   TestArgon2_HashVerify_CorrectPassword
+--- PASS: TestArgon2_HashVerify_CorrectPassword (0.12s)
+=== RUN   TestArgon2_Memclr_ZeroesBuffer
+--- PASS: TestArgon2_Memclr_ZeroesBuffer (0.00s)
+=== RUN   TestArgon2_HashVerify_WrongPassword
+--- PASS: TestArgon2_HashVerify_WrongPassword (0.10s)
+=== RUN   TestArgon2_HashVerify_TamperedHash
+--- PASS: TestArgon2_HashVerify_TamperedHash (0.08s)
+=== RUN   TestArgon2_HashVerify_EmptyPassword
+--- PASS: TestArgon2_HashVerify_EmptyPassword (0.09s)
+=== RUN   TestArgon2_HashVerify_EmptyHash
+    hash-kits_test.go:173: empty hash correctly returned error: argon2: hash is not in the correct format
+--- PASS: TestArgon2_HashVerify_EmptyHash (0.00s)
+=== RUN   TestArgon2_HashVerify_CaseSensitive
+--- PASS: TestArgon2_HashVerify_CaseSensitive (0.11s)
+=== RUN   TestArgon2_Memclr_NilBuffer
+--- PASS: TestArgon2_Memclr_NilBuffer (0.00s)
+=== RUN   TestArgon2_Memclr_AlreadyZero
+--- PASS: TestArgon2_Memclr_AlreadyZero (0.00s)
+=== RUN   TestPEF_Base64Encode_Basic
+    post-process-functions_test.go:46: Base64缂栫爜姝ｇ‘: 杈撳叆35瀛楄妭, 杈撳嚭48瀛楄妭
+--- PASS: TestPEF_Base64Encode_Basic (0.01s)
+=== RUN   TestPDF_Base64Decode_Basic
+    post-process-functions_test.go:64: Base64瑙ｇ爜姝ｇ‘: 缂栫爜52瀛楄妭, 瑙ｇ爜39瀛楄妭
+--- PASS: TestPDF_Base64Decode_Basic (0.00s)
+=== RUN   TestChainEncode_SingleFunc
+    post-process-functions_test.go:87: ChainEncode鍗曞嚱鏁版纭? CRC32: 1416145788
+--- PASS: TestChainEncode_SingleFunc (0.00s)
+=== RUN   TestChainEncodeDecode_RoundTrip
+    post-process-functions_test.go:109: ChainEncode鈫扖hainDecode寰€杩旀垚鍔? 'ChainEncode 鈫?ChainDecode round-trip verification!'
+--- PASS: TestChainEncodeDecode_RoundTrip (0.00s)
+=== RUN   TestPDF_Base64Decode_InvalidInput
+    post-process-functions_test.go:132: case 0: 闈炴硶杈撳叆姝ｇ‘鎷掔粷: base64.StdEncoding.Decode failed: illegal base64 data at input byte 0
+    post-process-functions_test.go:132: case 1: 闈炴硶杈撳叆姝ｇ‘鎷掔粷: base64.StdEncoding.Decode failed: illegal base64 data at input byte 0
+    post-process-functions_test.go:132: case 2: 闈炴硶杈撳叆姝ｇ‘鎷掔粷: base64.StdEncoding.Decode failed: illegal base64 data at input byte 0
+--- PASS: TestPDF_Base64Decode_InvalidInput (0.00s)
+=== RUN   TestChainEncode_EmptyFuncList
+    post-process-functions_test.go:150: 绌篊hainEncode姝ｇ‘杩斿洖鍘熷鏁版嵁: 'empty encode chain test'
+--- PASS: TestChainEncode_EmptyFuncList (0.00s)
+=== RUN   TestChainDecode_EmptyFuncList
+    post-process-functions_test.go:166: 绌篊hainDecode姝ｇ‘杩斿洖鍘熷鏁版嵁: 'empty decode chain test'
+--- PASS: TestChainDecode_EmptyFuncList (0.00s)
+=== RUN   TestPostProcess_Summary
+    post-process-functions_test.go:236: 姹囨€绘姤鍛婂凡鍐欏叆: output\test_post-process-functions_20260617_211417.log
+--- PASS: TestPostProcess_Summary (0.00s)
+FAIL
+FAIL	backend/tests/logic	0.972s
+FAIL

@@ -10,7 +10,6 @@ import (
 	v1 "backend/api/item/v1"
 
 	"github.com/gogf/gf/v2/database/gdb"
-	"github.com/gogf/gf/v2/encoding/gbase64"
 	"github.com/gogf/gf/v2/errors/gcode"
 	"github.com/gogf/gf/v2/errors/gerror"
 	"github.com/gogf/gf/v2/frame/g"
@@ -86,8 +85,7 @@ func (c *ControllerV1) ItemSubmit(ctx context.Context, req *v1.ItemSubmitReq) (r
 		})
 		return
 	}
-	// TODO: 移除高危Span属性 (文件加密密钥原始值)
-	span.SetAttributes(attribute.String("file.encryption.key.base64encode", gbase64.EncodeToString(key)))
+	// span.SetAttributes(attribute.String("file.encryption.key.base64encode", gbase64.EncodeToString(key)))
 
 	// 生成份额
 	span.AddEvent("对随机生成的密钥进行份额切割计算")
@@ -122,12 +120,13 @@ func (c *ControllerV1) ItemSubmit(ctx context.Context, req *v1.ItemSubmitReq) (r
 		})
 		return
 	}
-	// TODO: 移除高危Span属性 (份额原始值)
-	span.SetAttributes(
-		attribute.String("file.key.device_share.base64encode", deviceShare),
-		attribute.String("file.key.auth_share.base64encode", gbase64.EncodeToString(encryptedAuthShare)),
-		attribute.String("file.key.recovery_share.base64encode", gbase64.EncodeToString(encryptedRecovery)),
-	)
+	/*
+		span.SetAttributes(
+				attribute.String("file.key.device_share.base64encode", deviceShare),
+				attribute.String("file.key.auth_share.base64encode", gbase64.EncodeToString(encryptedAuthShare)),
+				attribute.String("file.key.recovery_share.base64encode", gbase64.EncodeToString(encryptedRecovery)),
+			)
+	*/
 
 	// 数据库存档
 	err = g.DB().Transaction(ctx, func(ctx context.Context, tx gdb.TX) error {

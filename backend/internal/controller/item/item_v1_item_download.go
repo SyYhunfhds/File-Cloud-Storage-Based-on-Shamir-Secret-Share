@@ -10,7 +10,6 @@ import (
 	"context"
 	"net/http"
 
-	"github.com/gogf/gf/v2/encoding/gbase64"
 	"github.com/gogf/gf/v2/errors/gcode"
 	"github.com/gogf/gf/v2/errors/gerror"
 	"github.com/gogf/gf/v2/net/ghttp"
@@ -142,10 +141,12 @@ from public.shares where item_id = ? and share_type = ? and status = ?`,
 		return
 	}
 
-	span.SetAttributes(
-		attribute.String("file.key.auth_share.base64encode", sqlV.AuthShare),
-		attribute.String("file.key.device_share.base64encode", req.DeviceShare), // device share本来就已经是base64编码过一次了
-	)
+	/*
+		span.SetAttributes(
+				attribute.String("file.key.auth_share.base64encode", sqlV.AuthShare),
+				attribute.String("file.key.device_share.base64encode", req.DeviceShare), // device share本来就已经是base64编码过一次了
+			)
+	*/
 
 	// 先AES-GCM解密再Base64+JSON解码
 	// decryptedAuthShare, err := c.cu.DecryptAuthShare(ctx, []byte(sqlV.AuthShare), false)
@@ -194,7 +195,7 @@ from public.shares where item_id = ? and share_type = ? and status = ?`,
 	key := shamir.Recover([]shamir.Share{
 		sqlV.decodedAuthShare, deviceShare,
 	})
-	span.SetAttributes(attribute.String("file.key.recovery.base64encode", gbase64.EncodeToString(key)))
+	// span.SetAttributes(attribute.String("file.key.recovery.base64encode", gbase64.EncodeToString(key)))
 	defer logic.Memclr(key) // 置空密钥
 
 	// 读取加密文件、解密并保存到临时目录中

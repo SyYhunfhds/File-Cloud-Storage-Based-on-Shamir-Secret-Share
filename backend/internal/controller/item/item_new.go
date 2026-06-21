@@ -8,6 +8,7 @@ import (
 	"backend/api/item"
 	"backend/internal/config"
 	"backend/internal/logic"
+	crypv2 "backend/internal/logic/crypto/v2"
 )
 
 type option struct {
@@ -18,9 +19,10 @@ type option struct {
 type ControllerV1 struct {
 	options *option
 
-	fu *logic.FileUtils
-	cu *logic.CryptoUtils
-	hu *logic.HashUtils
+	fu  *logic.FileUtils
+	cu  *logic.CryptoUtils
+	icu logic.ICryptoUtils
+	hu  *logic.HashUtils
 }
 type OptionFunc func(*option)
 
@@ -31,14 +33,16 @@ func (c *ControllerV1) injectDefaultConfig() {
 func (c *ControllerV1) build() {
 	c.fu.BuildWithConfig(&c.options.Item)
 	c.cu.BuildWithConfig(&c.options.Item)
+	c.icu.BuildWithConfig(c.options.Item)
 	c.hu.BuildWithConfig(&c.options.ArgonConfig)
 }
 
 func NewV1(options ...OptionFunc) item.IItemV1 {
 	ctrl := &ControllerV1{
-		fu: logic.NewFileUtils(),
-		cu: logic.NewCryptoUtils(),
-		hu: logic.NewHashUtils(),
+		fu:  logic.NewFileUtils(),
+		icu: crypv2.NewICryptoUtils(),
+		cu:  logic.NewCryptoUtils(),
+		hu:  logic.NewHashUtils(),
 	}
 
 	ctrl.options = &option{}

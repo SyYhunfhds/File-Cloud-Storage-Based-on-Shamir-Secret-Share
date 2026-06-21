@@ -1,0 +1,7 @@
+--- FAIL: TestCryptoV1_GCM_Decrypt_TamperedCiphertext (0.00s)
+    crypto-kits_test.go:286: NewCipher: crypto/aes: invalid key size 31
+--- FAIL: TestCryptoV1_GCM_Decrypt_TruncatedCiphertext (0.00s)
+    crypto-kits_test.go:320: NewCipher: crypto/aes: invalid key size 30
+FAIL
+FAIL	backend/tests/logic	0.747s
+FAIL

@@ -1,0 +1,142 @@
+=== RUN   TestSomeExample
+Original secret: audit-key-1234
+After update 1 - secret unchanged: true
+After update 2 - secret unchanged: true
+After update 3 - secret unchanged: true
+--- PASS: TestSomeExample (0.00s)
+=== RUN   TestNISTv3_FieldAdd_Identity
+--- PASS: TestNISTv3_FieldAdd_Identity (0.01s)
+=== RUN   TestNISTv3_FieldAdd_Commutative
+--- PASS: TestNISTv3_FieldAdd_Commutative (0.00s)
+=== RUN   TestNISTv3_FieldAdd_Associative
+--- PASS: TestNISTv3_FieldAdd_Associative (0.00s)
+=== RUN   TestNISTv3_FieldMul_Identity
+--- PASS: TestNISTv3_FieldMul_Identity (0.00s)
+=== RUN   TestNISTv3_FieldMul_Commutative
+--- PASS: TestNISTv3_FieldMul_Commutative (0.00s)
+=== RUN   TestNISTv3_FieldMul_Associative
+--- PASS: TestNISTv3_FieldMul_Associative (0.00s)
+=== RUN   TestNISTv3_FieldMul_Distributive
+--- PASS: TestNISTv3_FieldMul_Distributive (0.00s)
+=== RUN   TestNISTv3_FieldInv_Property
+--- PASS: TestNISTv3_FieldInv_Property (0.00s)
+=== RUN   TestNISTv3_FieldInv_Zero
+    nist_kat_test.go:157: inv(0) = 0 (expected: 0, since 0^(p-2) mod p = 0)
+--- PASS: TestNISTv3_FieldInv_Zero (0.00s)
+=== RUN   TestNISTv3_FieldPow_Fermat
+--- PASS: TestNISTv3_FieldPow_Fermat (0.00s)
+=== RUN   TestNISTv3_PolyEval_KnownVector
+--- PASS: TestNISTv3_PolyEval_KnownVector (0.00s)
+=== RUN   TestNISTv3_PolyEval_ZeroPoly
+--- PASS: TestNISTv3_PolyEval_ZeroPoly (0.00s)
+=== RUN   TestNISTv3_PolyEval_Constant
+--- PASS: TestNISTv3_PolyEval_Constant (0.00s)
+=== RUN   TestNISTv3_Lagrange_KnownPoints
+--- PASS: TestNISTv3_Lagrange_KnownPoints (0.00s)
+=== RUN   TestNISTv3_SplitRecover_1Byte
+--- PASS: TestNISTv3_SplitRecover_1Byte (0.00s)
+=== RUN   TestNISTv3_SplitRecover_16Bytes
+--- PASS: TestNISTv3_SplitRecover_16Bytes (0.00s)
+=== RUN   TestNISTv3_SplitRecover_32Bytes_AES256Key
+=== RUN   TestNISTv3_SplitRecover_32Bytes_AES256Key/all-zeros
+=== RUN   TestNISTv3_SplitRecover_32Bytes_AES256Key/all-0x7F
+=== RUN   TestNISTv3_SplitRecover_32Bytes_AES256Key/alternating-55-AA
+=== RUN   TestNISTv3_SplitRecover_32Bytes_AES256Key/incrementing
+--- PASS: TestNISTv3_SplitRecover_32Bytes_AES256Key (0.00s)
+    --- PASS: TestNISTv3_SplitRecover_32Bytes_AES256Key/all-zeros (0.00s)
+    --- PASS: TestNISTv3_SplitRecover_32Bytes_AES256Key/all-0x7F (0.00s)
+    --- PASS: TestNISTv3_SplitRecover_32Bytes_AES256Key/alternating-55-AA (0.00s)
+    --- PASS: TestNISTv3_SplitRecover_32Bytes_AES256Key/incrementing (0.00s)
+=== RUN   TestNISTv3_SplitRecover_Threshold
+    nist_kat_test.go:350: threshold verified: 2 shares produced wrong result (expected)
+--- PASS: TestNISTv3_SplitRecover_Threshold (0.00s)
+=== RUN   TestNISTv3_Split_Nondeterministic
+--- PASS: TestNISTv3_Split_Nondeterministic (0.00s)
+=== RUN   TestNISTv3_Delta_ZeroDelta
+--- PASS: TestNISTv3_Delta_ZeroDelta (0.00s)
+=== RUN   TestNISTv3_Delta_Invariant
+--- PASS: TestNISTv3_Delta_Invariant (0.00s)
+=== RUN   TestNISTv3_Padding_Empty
+--- PASS: TestNISTv3_Padding_Empty (0.00s)
+=== RUN   TestNISTv3_Padding_1Byte
+--- PASS: TestNISTv3_Padding_1Byte (0.00s)
+=== RUN   TestNISTv3_Padding_16Bytes
+--- PASS: TestNISTv3_Padding_16Bytes (0.00s)
+=== RUN   TestNISTv3_Padding_RoundTrip
+--- PASS: TestNISTv3_Padding_RoundTrip (0.00s)
+=== RUN   TestNISTv3_Padding_InvalidPadding
+--- PASS: TestNISTv3_Padding_InvalidPadding (0.00s)
+=== RUN   TestRecoverv3_WrongShare_ProducesWrongSecret
+    nist_kat_test.go:546: v3 wrong share: silent failure confirmed
+--- PASS: TestRecoverv3_WrongShare_ProducesWrongSecret (0.00s)
+=== RUN   TestRecoverv3_WrongXCoordinate
+    nist_kat_test.go:566: v3 wrong X: silent failure confirmed
+--- PASS: TestRecoverv3_WrongXCoordinate (0.00s)
+=== RUN   TestRecoverv3_DuplicateXCoordinate
+    nist_kat_test.go:580: v3 duplicate X: recovery returned [0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0] (len=20)
+--- PASS: TestRecoverv3_DuplicateXCoordinate (0.00s)
+=== RUN   TestRecoverv3_EmptyShares
+--- PASS: TestRecoverv3_EmptyShares (0.00s)
+=== RUN   TestRecoverv3_InsufficientShares
+    nist_kat_test.go:604: v3 insufficient shares (2 of 3): silent failure confirmed
+--- PASS: TestRecoverv3_InsufficientShares (0.00s)
+=== RUN   TestRecoverv3_CorruptedSingleValue
+    nist_kat_test.go:626: v3 corrupted share: silent failure confirmed
+--- PASS: TestRecoverv3_CorruptedSingleValue (0.00s)
+=== RUN   TestNISTv3_GenerateSingleShare_Recoverable
+    nist_kat_test.go:657: GenerateSingleShare: Index=20, blocks=8
+--- PASS: TestNISTv3_GenerateSingleShare_Recoverable (0.00s)
+=== RUN   TestNISTv3_GenerateSingleShare_Nondeterministic
+    nist_kat_test.go:690: v3 GenerateSingleShare 闈炵‘瀹氭€ч獙璇侀€氳繃
+--- PASS: TestNISTv3_GenerateSingleShare_Nondeterministic (0.00s)
+=== RUN   TestNISTv3_KAT_Summary
+    nist_kat_test.go:745: NIST KAT v3 summary written to output\nist_kat_v3_20260617_211428.txt
+--- PASS: TestNISTv3_KAT_Summary (0.00s)
+=== RUN   TestBasicSplitRecover
+=== RUN   TestBasicSplitRecover/4-byte-secret
+=== RUN   TestBasicSplitRecover/8-byte-secret
+=== RUN   TestBasicSplitRecover/16-byte-secret
+=== RUN   TestBasicSplitRecover/5-byte-secret
+=== RUN   TestBasicSplitRecover/1-byte-secret
+=== RUN   TestBasicSplitRecover/empty-secret
+=== RUN   TestBasicSplitRecover/32-byte-secret
+--- PASS: TestBasicSplitRecover (0.00s)
+    --- PASS: TestBasicSplitRecover/4-byte-secret (0.00s)
+    --- PASS: TestBasicSplitRecover/8-byte-secret (0.00s)
+    --- PASS: TestBasicSplitRecover/16-byte-secret (0.00s)
+    --- PASS: TestBasicSplitRecover/5-byte-secret (0.00s)
+    --- PASS: TestBasicSplitRecover/1-byte-secret (0.00s)
+    --- PASS: TestBasicSplitRecover/empty-secret (0.00s)
+    --- PASS: TestBasicSplitRecover/32-byte-secret (0.00s)
+=== RUN   TestDeltaUpdate
+--- PASS: TestDeltaUpdate (0.00s)
+=== RUN   TestGenerateUserXFromID
+--- PASS: TestGenerateUserXFromID (0.00s)
+=== RUN   TestPadding
+=== RUN   TestPadding/4-byte
+=== RUN   TestPadding/5-byte
+=== RUN   TestPadding/8-byte
+=== RUN   TestPadding/1-byte
+=== RUN   TestPadding/empty
+--- PASS: TestPadding (0.00s)
+    --- PASS: TestPadding/4-byte (0.00s)
+    --- PASS: TestPadding/5-byte (0.00s)
+    --- PASS: TestPadding/8-byte (0.00s)
+    --- PASS: TestPadding/1-byte (0.00s)
+    --- PASS: TestPadding/empty (0.00s)
+=== RUN   TestNoDoublePadding
+--- PASS: TestNoDoublePadding (0.00s)
+=== RUN   TestFieldOperations
+--- PASS: TestFieldOperations (0.00s)
+=== RUN   TestPerformanceThreshold
+=== RUN   TestPerformanceThreshold/quick-test
+=== RUN   TestPerformanceThreshold/medium-test
+=== RUN   TestPerformanceThreshold/large-test
+=== RUN   TestPerformanceThreshold/huge-test
+--- PASS: TestPerformanceThreshold (0.24s)
+    --- PASS: TestPerformanceThreshold/quick-test (0.00s)
+    --- PASS: TestPerformanceThreshold/medium-test (0.00s)
+    --- PASS: TestPerformanceThreshold/large-test (0.02s)
+    --- PASS: TestPerformanceThreshold/huge-test (0.22s)
+PASS
+ok  	backend/pkg/shamir/v3	0.345s
