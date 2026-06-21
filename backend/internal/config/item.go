@@ -44,8 +44,9 @@ type ItemSeal struct {
 	// ShareKey 用于加密份额的对称密钥
 	ShareKey string `yaml:"key" json:"key"`
 
-	KeySize int    `yaml:"key_size" json:"key_size"` // AES密钥长度
-	Nonce   string `yaml:"nonce" json:"nonce"`
+	KeySize  int    `yaml:"key_size" json:"key_size"` // AES密钥长度
+	Nonce    string `yaml:"nonce" json:"nonce"`
+	XXTEAKey string `yaml:"xxtea_key" json:"xxtea_key"` // XXTEA混淆密钥(16字节hex)
 }
 
 // ItemEtc 杂项配置

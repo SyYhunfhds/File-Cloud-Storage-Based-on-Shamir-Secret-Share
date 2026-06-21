@@ -205,18 +205,24 @@ func (c *ControllerV1) ShareRefresh(ctx context.Context, req *v1.ShareRefreshReq
 	span.AddEvent("使用Auth Share和Device Share重建密钥")
 	temp.EncodedUserShare, _ = gbase64.Decode(temp.EncodedUserShare)
 	temp.EncodedAuthShare, _ = gbase64.Decode(temp.EncodedAuthShare)
-	temp.FileKey, err = c.cu.RecoverFromJson(ctx,
-		temp.EncodedUserShare,
-		temp.EncodedAuthShare,
-	) // 密钥重建
-	if err != nil {
-		span.SetStatus(codes.Error, "密钥重建失败")
-		span.SetAttributes(attribute.String("file.key.recovery.error", err.Error()))
 
-		c.sendAndFlush(response, Msg{Progress: 55, Message: "密钥重建失败"})
-		err = gerror.NewCode(gcode.CodeSecurityReason, "密钥重建失败")
+	// XXTEA解混淆: 旧份额存储在DB时已经被混淆, 需要先解混淆再恢复密钥
+	userShare, err := shamir.ShareFromBase64Bytes(temp.EncodedUserShare)
+	if err != nil {
+		span.SetStatus(codes.Error, "User Share JSON反序列化失败")
+		c.sendAndFlush(response, Msg{Progress: 55, Message: "份额格式无效"})
 		return
 	}
+	userShare = c.cuObf.DeobfuscateShare(userShare)
+	authShare, err := shamir.ShareFromBase64Bytes(temp.EncodedAuthShare)
+	if err != nil {
+		span.SetStatus(codes.Error, "Auth Share JSON反序列化失败")
+		c.sendAndFlush(response, Msg{Progress: 55, Message: "份额格式无效"})
+		return
+	}
+	authShare = c.cuObf.DeobfuscateShare(authShare)
+	temp.FileKey = shamir.Unpad(shamir.Recover([]shamir.Share{userShare, authShare}))
+
 	c.sendAndFlush(response, Msg{Progress: 60, Message: "密钥重建结束"})
 
 	coordinates := make([]uint32, 0, len(temp.Coordinates)+3)
@@ -226,16 +232,8 @@ func (c *ControllerV1) ShareRefresh(ctx context.Context, req *v1.ShareRefreshReq
 	coordinates = append(coordinates, temp.Coordinates...)        // 其他用户的坐标
 
 	c.sendAndFlush(response, Msg{Progress: 70, Message: "重新计算份额"})
-	shares, err := c.cu.SplitToJson(
-		ctx, temp.FileKey, coordinates...,
-	)
-	var (
-		ds          = shares[0]
-		as          = shares[1]
-		rs          = shares[2]
-		otherShares = shares[3:]
-	)
-	defer cleanup(temp.FileKey, otherShares, as, rs)
+	// 使用 shamir.Split 直接分割，再通过 XXTEA 混淆每个份额
+	rawShares, err := shamir.Split(temp.FileKey, 2, coordinates)
 	if err != nil {
 		span.SetStatus(codes.Error, "份额重新计算失败")
 		span.SetAttributes(attribute.String("file.key.re_split.error", err.Error()))
@@ -244,6 +242,25 @@ func (c *ControllerV1) ShareRefresh(ctx context.Context, req *v1.ShareRefreshReq
 		err = gerror.NewCode(gcode.CodeInternalError, "无法重新计算份额")
 		return
 	}
+
+	// XXTEA混淆每个份额后再序列化
+	shares := make([][]byte, len(rawShares))
+	for i := range rawShares {
+		rawShares[i] = c.cuObf.ObfuscateShare(rawShares[i])
+		shares[i], err = rawShares[i].ToBase64Bytes()
+		if err != nil {
+			span.SetStatus(codes.Error, "份额序列化失败")
+			c.sendMsgAndFlush(response, "份额序列化失败")
+			return
+		}
+	}
+	var (
+		ds          = shares[0]
+		as          = shares[1]
+		rs          = shares[2]
+		otherShares = shares[3:]
+	)
+	defer cleanup(temp.FileKey, otherShares, as, rs)
 	/*
 		// TODO: 启用份额加密
 		span.AddEvent("加密份额并存入数据库")

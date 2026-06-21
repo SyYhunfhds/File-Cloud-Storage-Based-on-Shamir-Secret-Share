@@ -22,9 +22,10 @@ type option struct {
 type ControllerV1 struct {
 	options *option
 
-	hu *logic.HashUtils
-	cu logic.ICryptoUtils
-	iu *logic.ItemUtils
+	hu    *logic.HashUtils
+	cu    logic.ICryptoUtils
+	cuObf *logic.CryptoUtils // v1 — 用于XXTEA份额混淆/解混淆
+	iu    *logic.ItemUtils
 }
 
 type OptionFunc func(c *ControllerV1)
@@ -34,6 +35,7 @@ func NewV1(options ...OptionFunc) share.IShareV1 {
 		options: &option{},
 		hu:      logic.NewHashUtils(),
 		cu:      crypv2.NewICryptoUtils(),
+		cuObf:   logic.NewCryptoUtils(),
 		iu:      logic.NewItemUtils(),
 	}
 
@@ -79,6 +81,7 @@ func WithCryptoConfig(cfg *config.Item) OptionFunc {
 func (c *ControllerV1) build() {
 	c.hu.BuildWithConfig(c.options.argonConfig)
 	c.cu.BuildWithConfig(*c.options.cryptoConfig)
+	c.cuObf.BuildWithConfig(c.options.cryptoConfig)
 	c.iu.BuildWithConfig(*c.options.cryptoConfig)
 }
 

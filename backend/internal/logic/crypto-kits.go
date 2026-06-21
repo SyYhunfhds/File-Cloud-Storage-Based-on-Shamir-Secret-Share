@@ -2,10 +2,12 @@ package logic
 
 import (
 	"backend/internal/config"
+	"backend/pkg/xxtea"
 	"backend/pkg/shamir/v3"
 	"context"
 	"crypto/aes"
 	"crypto/cipher"
+	"encoding/hex"
 	"math/rand/v2"
 
 	"github.com/gogf/gf/v2/encoding/gbase64"
@@ -69,8 +71,9 @@ type ICryptoUtils interface {
 }
 
 type CryptoUtils struct {
-	so ShamirOption
-	ao AESOption
+	so       ShamirOption
+	ao       AESOption
+	xxteaKey [4]uint32 // XXTEA混淆密钥
 }
 
 func NewCryptoUtils() *CryptoUtils {
@@ -82,6 +85,41 @@ func NewCryptoUtils() *CryptoUtils {
 
 func (cu *CryptoUtils) BuildWithConfig(ic *config.Item) {
 	cu.ao.key = ic.ShareKey
+	if ic.XXTEAKey != "" {
+		_ = cu.SetXXTEAKey(ic.XXTEAKey) // 运行时静默吞掉错误，配置校验在启动阶段完成
+	}
+}
+
+// SetXXTEAKey 从 hex 字符串设置 XXTEA 混淆密钥
+func (cu *CryptoUtils) SetXXTEAKey(hexKey string) error {
+	b, err := hex.DecodeString(hexKey)
+	if err != nil {
+		return err
+	}
+	if len(b) != 16 {
+		b = append(b, make([]byte, 16-len(b))...)
+	}
+	cu.xxteaKey = xxtea.KeyFromBytes(b[:16])
+	return nil
+}
+
+// ObfuscateShare 对 shamir.Share 进行 XXTEA 混淆
+// 将 Index 和 Values 合并为一个 [n+1]uint32 块后整体加密
+func (cu *CryptoUtils) ObfuscateShare(share shamir.Share) shamir.Share {
+	data := append([]uint32{share.Index}, share.Values...)
+	xxtea.Encrypt(data, cu.xxteaKey)
+	share.Index = data[0]
+	share.Values = data[1:]
+	return share
+}
+
+// DeobfuscateShare 对 shamir.Share 进行 XXTEA 解混淆
+func (cu *CryptoUtils) DeobfuscateShare(share shamir.Share) shamir.Share {
+	data := append([]uint32{share.Index}, share.Values...)
+	xxtea.Decrypt(data, cu.xxteaKey)
+	share.Index = data[0]
+	share.Values = data[1:]
+	return share
 }
 
 func (cu *CryptoUtils) SplitShare(secret []byte, userID uint32) (
@@ -96,6 +134,9 @@ func (cu *CryptoUtils) SplitShare(secret []byte, userID uint32) (
 	}
 
 	{
+		shares[0] = cu.ObfuscateShare(shares[0])
+		shares[1] = cu.ObfuscateShare(shares[1])
+		shares[2] = cu.ObfuscateShare(shares[2])
 		deviceShare, _ = shares[0].ToBase64()
 		authShare, _ = shares[1].ToBase64Bytes()
 		recoveryShare, _ = shares[2].ToBase64Bytes()
@@ -125,6 +166,9 @@ func (cu *CryptoUtils) ResplitShare(secret []byte, userID uint32, otherUsers []u
 	}
 
 	{
+		shares[0] = cu.ObfuscateShare(shares[0])
+		shares[1] = cu.ObfuscateShare(shares[1])
+		shares[2] = cu.ObfuscateShare(shares[2])
 		deviceShare, _ = shares[0].ToBase64()
 		authShare, _ = shares[1].ToBase64Bytes()
 		recoveryShare, _ = shares[2].ToBase64Bytes()
@@ -132,6 +176,7 @@ func (cu *CryptoUtils) ResplitShare(secret []byte, userID uint32, otherUsers []u
 	// 处理其他用户的份额
 	otherShares = make([][]byte, len(otherUsers))
 	for i := 3; i < len(shares); i++ {
+		shares[i] = cu.ObfuscateShare(shares[i])
 		otherShares[i-3], _ = shares[i].ToBase64Bytes()
 	}
 

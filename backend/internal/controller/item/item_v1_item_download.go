@@ -174,6 +174,7 @@ from public.shares where item_id = ? and share_type = ? and status = ?`,
 		})
 		return
 	}
+	sqlV.decodedAuthShare = c.cu.DeobfuscateShare(sqlV.decodedAuthShare) // XXTEA解混淆
 	// spew.Dump(sqlV)
 
 	// 然后解密DeviceShare
@@ -190,6 +191,7 @@ from public.shares where item_id = ? and share_type = ? and status = ?`,
 		})
 		return
 	}
+	deviceShare = c.cu.DeobfuscateShare(deviceShare) // XXTEA解混淆
 	// spew.Dump(deviceShare)
 	span.AddEvent("使用Auth Share和Device Share恢复密钥")
 	key := shamir.Recover([]shamir.Share{
