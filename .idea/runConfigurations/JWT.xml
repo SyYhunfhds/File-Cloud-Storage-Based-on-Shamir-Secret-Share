@@ -1,0 +1,14 @@
+<component name="ProjectRunConfigurationManager">
+  <configuration default="false" name="JWT封装套具测试" type="GoTestRunConfiguration" factoryName="Go Test">
+    <module name="CryptographyDesign" />
+    <working_directory value="$PROJECT_DIR$/backend/tests/logic" />
+    <root_directory value="$PROJECT_DIR$/backend" />
+    <kind value="PACKAGE" />
+    <package value="backend/tests/logic" />
+    <directory value="$PROJECT_DIR$" />
+    <filePath value="$PROJECT_DIR$" />
+    <framework value="gotest" />
+    <pattern value="^\QTestJWT" />
+    <method v="2" />
+  </configuration>
+</component>
