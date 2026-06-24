@@ -135,20 +135,6 @@ func (c *ControllerV1) ShareRefresh(ctx context.Context, req *v1.ShareRefreshReq
 		}
 		res.IsRecoveryCodeReGenerated = false // 恢复码有效, 所以不会修改恢复码
 
-		_span.AddEvent("使用Recovery Code对Recovery Share进行解密")
-		/*
-			temp.EncodedUserShare, err = c.cu.ChainBeforeDecrypt(
-					ctx, []byte(req.RecoveryCode), temp.EncodedRecoveryShare,
-				)
-			if err != nil {
-					_span.SetStatus(codes.Error, "Recovery Share解密失败")
-					_span.SetAttributes(attribute.String("file.key.recovery_share.decryption.error", err.Error()))
-
-					err = gerror.NewCode(gcode.CodeSecurityReason, "Recovery Share可能已失效, 这不是用户的问题")
-					_span.End()
-					return
-				}
-		*/
 		temp.EncodedUserShare = temp.EncodedRecoveryShare // 现在RS也是Base64编码的而已
 		_span.End()
 	}
@@ -200,27 +186,46 @@ func (c *ControllerV1) ShareRefresh(ctx context.Context, req *v1.ShareRefreshReq
 
 	}
 	_span.End()
-	span.SetAttributes(attribute.StringSlice("key.share.re_split.members", temp.Usernames))
+	// TODO 移除敏感调试数据
+	decodedAuthShare, _ := gbase64.Decode(temp.EncodedAuthShare)
+	span.SetAttributes(
+		attribute.StringSlice("key.share.re_split.members", temp.Usernames),
+		attribute.String("key.share.auth_share.debug.base64decode", string(decodedAuthShare)),
+	)
 
 	span.AddEvent("使用Auth Share和Device Share重建密钥")
-	temp.EncodedUserShare, _ = gbase64.Decode(temp.EncodedUserShare)
-	temp.EncodedAuthShare, _ = gbase64.Decode(temp.EncodedAuthShare)
+	// temp.EncodedUserShare, _ = gbase64.Decode(temp.EncodedUserShare)
+	// temp.EncodedAuthShare, _ = gbase64.Decode(temp.EncodedAuthShare)
 
 	// XXTEA解混淆: 旧份额存储在DB时已经被混淆, 需要先解混淆再恢复密钥
+	// 现在recovery Share使用Recovery Code进行XXTEA混淆
 	userShare, err := shamir.ShareFromBase64Bytes(temp.EncodedUserShare)
 	if err != nil {
 		span.SetStatus(codes.Error, "User Share JSON反序列化失败")
 		c.sendAndFlush(response, Msg{Progress: 55, Message: "份额格式无效"})
 		return
 	}
-	userShare = c.cuObf.DeobfuscateShare(userShare)
+	// 仅当Recovery Code有效也就是IsRecoveryCodeReGenerated为false时使用Recovery Code进行解混淆
+	var usEK []uint32 = nil
+	if !res.IsRecoveryCodeReGenerated {
+		usEK, err = logic.Uint32ArrayFromBase64(req.RecoveryCode)
+		if err != nil {
+			span.SetAttributes(attribute.String("key.recovery_share.convert.error", err.Error()))
+			span.SetStatus(codes.Error, "Recovery Code解码失败")
+			c.sendAndFlush(response, Msg{Progress: 58, Message: "Recovery Code解码失败"})
+			return
+		}
+		span.AddEvent("Recovery Code解码成功, 可以用于Recovery Share解混淆")
+	}
+
+	userShare = c.cuObf.DeobfuscateShare(userShare, usEK)
 	authShare, err := shamir.ShareFromBase64Bytes(temp.EncodedAuthShare)
 	if err != nil {
 		span.SetStatus(codes.Error, "Auth Share JSON反序列化失败")
 		c.sendAndFlush(response, Msg{Progress: 55, Message: "份额格式无效"})
 		return
 	}
-	authShare = c.cuObf.DeobfuscateShare(authShare)
+	authShare = c.cuObf.DeobfuscateShare(authShare, nil)
 	temp.FileKey = shamir.Unpad(shamir.Recover([]shamir.Share{userShare, authShare}))
 
 	c.sendAndFlush(response, Msg{Progress: 60, Message: "密钥重建结束"})
@@ -246,7 +251,7 @@ func (c *ControllerV1) ShareRefresh(ctx context.Context, req *v1.ShareRefreshReq
 	// XXTEA混淆每个份额后再序列化
 	shares := make([][]byte, len(rawShares))
 	for i := range rawShares {
-		rawShares[i] = c.cuObf.ObfuscateShare(rawShares[i])
+		rawShares[i] = c.cuObf.ObfuscateShare(rawShares[i], nil)
 		shares[i], err = rawShares[i].ToBase64Bytes()
 		if err != nil {
 			span.SetStatus(codes.Error, "份额序列化失败")
@@ -261,20 +266,7 @@ func (c *ControllerV1) ShareRefresh(ctx context.Context, req *v1.ShareRefreshReq
 		otherShares = shares[3:]
 	)
 	defer cleanup(temp.FileKey, otherShares, as, rs)
-	/*
-		// TODO: 启用份额加密
-		span.AddEvent("加密份额并存入数据库")
-		encAS, err := c.cu.EncryptAuthShare(ctx, as)
-			encRS, code, err := c.cu.EncryptRecoveryShare(rs, nil)
-			if err != nil {
-				span.SetStatus(codes.Error, "份额加密失败")
-				span.SetAttributes(attribute.String("file.key.share.encryption.error", err.Error()))
 
-				c.sendAndFlush(response, Msg{Progress: 75, Message: "份额加密失败"})
-				err = gerror.NewCode(gcode.CodeInternalError, "份额加密失败")
-				return
-			}
-	*/
 	code := c.cu.StringKey() // Recovery Code
 	codeHash, _ := c.hu.HashGen(code)
 	span.AddEvent("将Auth Share、Recovery Share以及其他用户的Device Share存入数据库")
@@ -288,7 +280,7 @@ func (c *ControllerV1) ShareRefresh(ctx context.Context, req *v1.ShareRefreshReq
 				"owner_id":     ac.Id,
 				"owner":        ac.Username,
 				"share_type":   dao.ShareTypeAuth,
-				"share_base64": gbase64.EncodeToString(as),
+				"share_base64": as, // Auth Share和Recovery Share现在都是直出Base64字节的了
 				"status":       dao.ShareStatusActive,
 
 				"updated_at": gtime.Now(),
@@ -299,7 +291,7 @@ func (c *ControllerV1) ShareRefresh(ctx context.Context, req *v1.ShareRefreshReq
 				"owner_id":     ac.Id,
 				"owner":        ac.Username,
 				"share_type":   dao.ShareTypeRecovery,
-				"share_base64": gbase64.EncodeToString(rs),
+				"share_base64": rs,
 				"code_hash":    codeHash,
 				"status":       dao.ShareStatusActive,
 
@@ -326,7 +318,7 @@ func (c *ControllerV1) ShareRefresh(ctx context.Context, req *v1.ShareRefreshReq
 				"owner_id":     ac.Id,               // 条目所有者 (不是 该份额的所有者)ID
 				"owner":        ac.Username,         // 条目所有者的用户名
 				"share_type":   dao.ShareTypeDevice, // 用户需要尽快登录上来
-				"share_base64": gbase64.EncodeToString(share),
+				"share_base64": share,
 				"status":       dao.ShareStatusActive,
 
 				"expire_at":  c.iu.ExpireAt(),
@@ -355,7 +347,7 @@ func (c *ControllerV1) ShareRefresh(ctx context.Context, req *v1.ShareRefreshReq
 	c.sendAndFlush(response, Msg{Progress: 90, Message: "份额入库完毕"})
 
 	msg = "请求处理完毕"
-	res.DeviceShare = gbase64.EncodeToString(ds)
+	res.DeviceShare = string(ds)
 	res.RecoveryCode = code
 	span.SetStatus(codes.Ok, msg)
 	span.AddEvent("请求处理成功")

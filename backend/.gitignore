@@ -41,6 +41,7 @@ resource/public/swagger/
 # 测试文件
 /example
 tests/data
+!tests/api/business_integration_test.go
 # pkg目录下的Markdown文档
 /pkg/**/*.md
 # 临时查询控制台
@@ -52,3 +53,5 @@ tests/data
 /tests/file_upload_and_download/config.go
 /**/*.zip
 /**/*.exe
+# 测试配置
+tests/orm/config.*

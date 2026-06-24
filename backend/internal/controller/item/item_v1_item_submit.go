@@ -21,7 +21,6 @@ import (
 )
 
 func (c *ControllerV1) ItemSubmit(ctx context.Context, req *v1.ItemSubmitReq) (res *v1.ItemSubmitRes, err error) {
-	// path := "business/item/encrypted" // 会被闭包函数捕获, 逃逸到堆上
 	var itemId int64
 
 	r := ghttp.RequestFromCtx(ctx)
@@ -85,59 +84,41 @@ func (c *ControllerV1) ItemSubmit(ctx context.Context, req *v1.ItemSubmitReq) (r
 		})
 		return
 	}
-	// span.SetAttributes(attribute.String("file.encryption.key.base64encode", gbase64.EncodeToString(key)))
 
 	// 生成份额
 	span.AddEvent("对随机生成的密钥进行份额切割计算")
-	deviceShare, authShare, recoveryShare, err := c.cu.SplitShare(key, ac.Coordinate)
+	// 返回份额切片和恢复码 (已Base64编码)
+	shares, code, err := c.cu.SplitForOneUser(key, 2, 3) // TODO 更换为动态门限对
+	var (
+		as = shares[0]
+		ds = shares[1]
+		rs = shares[2]
+	)
 	logic.Memclr(key) // 密钥清空
 	// 对称加密认证份额
-	encryptedAuthShare, err := c.cu.EncryptAuthShare(ctx, authShare, false)
-	if err != nil {
-		_ = gfile.RemoveFile(filepath)
-		span.SetStatus(codes.Error, "认证份额加密失败")
-		span.SetAttributes(attribute.String("file.key.auth_share.encryption.error", err.Error()))
 
-		r.Response.WriteJson(v1.ItemSubmitRes{
-			Code:    gcode.CodeInternalError.Code(),
-			Message: "份额加密失败",
-			Cause:   err.Error(),
-		})
-		return
-	}
-	// 随机密钥加密恢复份额, 并返回密文和32字节密钥
-	encryptedRecovery, recoveryCode, err := c.cu.EncryptRecoveryShare(recoveryShare, nil, false)
-	recoveryCodeHash, err := c.hu.HashGen(recoveryCode)
-	if err != nil { // 份额生成失败
-		_ = gfile.RemoveFile(filepath) // 删除上传的文件
-		span.SetStatus(codes.Error, "密钥切割失败")
-		span.AddEvent("份额生成失败, 已删除加密保存的文件, 并置空密钥")
-
-		r.Response.WriteJson(v1.ItemSubmitRes{
-			Code:    gcode.CodeInternalError.Code(),
-			Message: "密钥切割失败",
-			Cause:   err.Error(),
-		})
-		return
-	}
-	/*
-		span.SetAttributes(
-				attribute.String("file.key.device_share.base64encode", deviceShare),
-				attribute.String("file.key.auth_share.base64encode", gbase64.EncodeToString(encryptedAuthShare)),
-				attribute.String("file.key.recovery_share.base64encode", gbase64.EncodeToString(encryptedRecovery)),
-			)
-	*/
+	// 计算恢复码的哈希; 现在恢复码是16*3/4长的字符串了
+	recoveryCodeHash, _ := c.hu.HashGen(code)
 
 	// 数据库存档
+	var (
+		filename string
+	)
+	if req.Filename != "" {
+		filename = req.Filename
+	} else {
+		filename = file.Filename
+	} // 获取请求参数
+
 	err = g.DB().Transaction(ctx, func(ctx context.Context, tx gdb.TX) error {
 		itemId, err = dao.Items.Ctx(ctx).Data(do.Items{
-			Filename:   file.Filename,
+			Filename:   filename,
 			Savename:   gfile.Basename(filepath),
 			OwnerId:    ac.Id,
 			UploaderId: ac.Id,
 
 			MinimumPrivilege: ac.Privilege,
-			IsPublic:         false, // 默认不可被公开搜索
+			IsPublic:         req.EnablePublic,
 		}).InsertAndGetId()
 		if err != nil {
 			return err
@@ -152,7 +133,7 @@ func (c *ControllerV1) ItemSubmit(ctx context.Context, req *v1.ItemSubmitReq) (r
 				"share_type": dao.ShareTypeAuth,
 				"status":     dao.ShareStatusActive,
 
-				"share_base64": string(encryptedAuthShare),
+				"share_base64": string(as),
 			},
 			g.Map{
 				"item_id":    itemId,
@@ -162,7 +143,7 @@ func (c *ControllerV1) ItemSubmit(ctx context.Context, req *v1.ItemSubmitReq) (r
 				"share_type": dao.ShareTypeRecovery,
 				"status":     dao.ShareStatusActive,
 
-				"share_base64": string(encryptedRecovery),
+				"share_base64": string(rs),
 				"code_hash":    recoveryCodeHash,
 			},
 		}).OnConflict("item_id", "user_id", "share_type", "status").Save()
@@ -193,7 +174,7 @@ func (c *ControllerV1) ItemSubmit(ctx context.Context, req *v1.ItemSubmitReq) (r
 		Name         string `json:"name" dc:"上传后的文件名; 可能会因为存在同名文件而被重命名"`
 		Share        string `json:"share" dc:"Base64编码的明文Device Share"`
 		RecoveryCode string `json:"recovery_code" dc:"Recovery Share加密时用的随机32位可打印字符密钥"`
-	}{ItemId: int(itemId), Name: file.Filename, Share: deviceShare, RecoveryCode: recoveryCode}
+	}{ItemId: int(itemId), Name: file.Filename, Share: string(ds), RecoveryCode: code}
 
 	span.AddEvent("条目上传成功")
 	span.SetStatus(codes.Ok, "条目上传成功")

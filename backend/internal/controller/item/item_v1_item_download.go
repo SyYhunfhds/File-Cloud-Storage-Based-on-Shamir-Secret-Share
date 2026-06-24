@@ -174,8 +174,10 @@ from public.shares where item_id = ? and share_type = ? and status = ?`,
 		})
 		return
 	}
-	sqlV.decodedAuthShare = c.cu.DeobfuscateShare(sqlV.decodedAuthShare) // XXTEA解混淆
+	sqlV.decodedAuthShare = c.cu.DeobfuscateShare(sqlV.decodedAuthShare, nil) // XXTEA解混淆
 	// spew.Dump(sqlV)
+
+	// span.SetAttributes(attribute.String("req.device_share.value", req.DeviceShare))
 
 	// 然后解密DeviceShare
 	span.AddEvent("还原Device Share为标准份额类型")
@@ -191,7 +193,7 @@ from public.shares where item_id = ? and share_type = ? and status = ?`,
 		})
 		return
 	}
-	deviceShare = c.cu.DeobfuscateShare(deviceShare) // XXTEA解混淆
+	deviceShare = c.cu.DeobfuscateShare(deviceShare, nil) // XXTEA解混淆
 	// spew.Dump(deviceShare)
 	span.AddEvent("使用Auth Share和Device Share恢复密钥")
 	key := shamir.Recover([]shamir.Share{

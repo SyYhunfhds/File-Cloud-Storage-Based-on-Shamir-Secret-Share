@@ -6,6 +6,9 @@ package dao
 
 import (
 	"backend/internal/dao/internal"
+	"context"
+
+	"github.com/gogf/gf/v2/errors/gerror"
 )
 
 // itemMembersDao is the data access object for the table item_members.
@@ -34,3 +37,43 @@ const (
 	SubmissionApproved                         // 审批通过
 	SubmissionPending                          // 待审批
 )
+
+/*
+CountMembers 统计给定用户(可能不为所有者)的文件的有效审计成员数
+
+参数:
+
+	ctx context.Context
+	userId int
+	itemId int
+
+返回值:
+
+	count int
+	err error
+
+报错:
+- 当数据库无法连接时会直接Panic
+*/
+func CountMembers(ctx context.Context, userId int, itemId int) (count int, err error) {
+	if userId <= 0 {
+		return 0, gerror.New("请提供有效的用户ID")
+	}
+
+	var res1 = struct {
+		OwnerId int `json:"owner_id"`
+	}{}
+	if err := Items.Ctx(ctx).Where("id", itemId).Scan(&res1); err != nil {
+		return 0, err
+	}
+	if res1.OwnerId != userId {
+		err = gerror.Newf("文件[%d]实际由用户[%d]所有, 检测到用户[%d]正在尝试非法访问", itemId, res1.OwnerId, userId)
+		return
+	}
+
+	count, _ = ItemMembers.Ctx(ctx).
+		Where("item_id=? AND status=?", itemId, SubmissionApproved).
+		Count()
+	count++ // 算上所有者自己
+	return
+}

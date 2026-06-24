@@ -13,3 +13,15 @@ backend/main.exe~
 *.zip
 *.md
 !README.md
+# 流程图导出目录 (仅忽略渲染脚本等临时文件)
+maps/node_modules
+maps/.puppeteerrc.json
+maps/render.js
+maps/temp_render.html
+/**/*.pdf
+code-graph-result/
+maps/
+visio-maps
+visio-maps/**/*
+drawio-maps/
+附件/

@@ -61,8 +61,8 @@ func TestXXTEA_ObfuscateDeobfuscate_RoundTrip(t *testing.T) {
 	share := shares[0]
 
 	// 混淆 → 解混淆 往返
-	obfuscated := cu.ObfuscateShare(share)
-	deobfuscated := cu.DeobfuscateShare(obfuscated)
+	obfuscated := cu.ObfuscateShare(share, nil)
+	deobfuscated := cu.DeobfuscateShare(obfuscated, nil)
 
 	assertShareEqual(t, share, deobfuscated, "往返")
 }
@@ -83,8 +83,8 @@ func TestXXTEA_Obfuscate_MultipleShares(t *testing.T) {
 
 	// 验证每个份额混淆后不同，解混淆后恢复
 	for i, sh := range shares {
-		obf := cu.ObfuscateShare(sh)
-		deobf := cu.DeobfuscateShare(obf)
+		obf := cu.ObfuscateShare(sh, nil)
+		deobf := cu.DeobfuscateShare(obf, nil)
 		assertShareEqual(t, sh, deobf, fmt.Sprintf("share[%d]", i))
 
 		// 混淆后的值应与原文不同
@@ -117,8 +117,8 @@ func TestXXTEA_Deobfuscate_Recover(t *testing.T) {
 	}
 
 	// 混淆份额并验证混淆后不能直接恢复
-	obf1 := cu.ObfuscateShare(shares[0])
-	obf2 := cu.ObfuscateShare(shares[1])
+	obf1 := cu.ObfuscateShare(shares[0], nil)
+	obf2 := cu.ObfuscateShare(shares[1], nil)
 	wrongKey := shamir.Recover([]shamir.Share{obf1, obf2})
 	for i := range wrongKey {
 		if wrongKey[i] != original[i] {
@@ -130,8 +130,8 @@ func TestXXTEA_Deobfuscate_Recover(t *testing.T) {
 	}
 
 	// 解混淆后恢复
-	deobf1 := cu.DeobfuscateShare(obf1)
-	deobf2 := cu.DeobfuscateShare(obf2)
+	deobf1 := cu.DeobfuscateShare(obf1, nil)
+	deobf2 := cu.DeobfuscateShare(obf2, nil)
 	recovered := shamir.Unpad(shamir.Recover([]shamir.Share{deobf1, deobf2}))
 	for i := range recovered {
 		if recovered[i] != original[i] {
@@ -151,8 +151,8 @@ func TestXXTEA_Obfuscate_Deterministic(t *testing.T) {
 	}
 
 	// 相同的输入应产生相同的混淆输出（XXTEA 是确定性加密）
-	obf1 := cu.ObfuscateShare(shares[0])
-	obf2 := cu.ObfuscateShare(shares[0])
+	obf1 := cu.ObfuscateShare(shares[0], nil)
+	obf2 := cu.ObfuscateShare(shares[0], nil)
 	assertShareEqual(t, obf1, obf2, "确定性")
 }
 
@@ -166,12 +166,12 @@ func TestXXTEA_Deobfuscate_WrongKey(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	obf := cu.ObfuscateShare(shares[0])
+	obf := cu.ObfuscateShare(shares[0], nil)
 
 	// 用错误密钥解混淆
 	wrongCU := logic.NewCryptoUtils()
 	_ = wrongCU.SetXXTEAKey("FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF")
-	deobf := wrongCU.DeobfuscateShare(obf)
+	deobf := wrongCU.DeobfuscateShare(obf, nil)
 
 	// 错误密钥解混淆后应与原文不同
 	if deobf.Index == shares[0].Index {
@@ -232,8 +232,8 @@ func TestXXTEA_Integration_SplitShare_Obfuscated(t *testing.T) {
 	}
 
 	// 解混淆后验证可以恢复密钥
-	aDeobf := cu.DeobfuscateShare(aShare)
-	dDeobf := cu.DeobfuscateShare(dShare)
+	aDeobf := cu.DeobfuscateShare(aShare, nil)
+	dDeobf := cu.DeobfuscateShare(dShare, nil)
 	recovered := cu.RecoverShare(aDeobf, dDeobf)
 	for i := range recovered {
 		if recovered[i] != key[i] {
@@ -303,7 +303,7 @@ func BenchmarkXXTEA_ObfuscateShare_32B(b *testing.B) {
 
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
-		cu.ObfuscateShare(share)
+		cu.ObfuscateShare(share, nil)
 	}
 }
 
@@ -314,10 +314,10 @@ func BenchmarkXXTEA_DeobfuscateShare_32B(b *testing.B) {
 	key := genKey(32)
 	coords := []uint32{rand.Uint32N(shamir.Prime), rand.Uint32N(shamir.Prime)}
 	shares, _ := shamir.Split(key, 2, coords)
-	share := cu.ObfuscateShare(shares[0])
+	share := cu.ObfuscateShare(shares[0], nil)
 
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
-		cu.DeobfuscateShare(share)
+		cu.DeobfuscateShare(share, nil)
 	}
 }

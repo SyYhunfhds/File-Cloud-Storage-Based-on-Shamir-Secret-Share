@@ -53,24 +53,17 @@ create table if not exists public.items (
     uploader_id int references users (id) on delete cascade on update cascade, -- 上传者ID, 默认和owner_id一样
     minimum_privilege int not null, -- 要看到这个条目所需的最低权限, 默认和用户的权限一样
     is_public bool not null default false, -- 是否公开/是否可被公开搜索到
+
+    threshold int not null default 2, -- 分享阈值; 默认值为2
+
     uploaded_at timestamp default now(), -- 上传时间
     changed_at timestamp default now(), -- 修改时间
     deleted_at timestamp default null -- 删除时间
 );
+alter table public.items add column threshold int not null default 2;
 
 -- 记得给owner_id补一个索引
 create index items_owner_id_index on items (owner_id);
--- 启用items表的RLS
-alter table public.items enable row level security;
-
-create policy can_access_only_it_belongs_to_user on public.items
-for all
-to psql
-using(
-    nullif(current_setting('app.current_user_id', true), '') is null -- 没更新的话这个就为空, 就先放行
-    or
-    (items.owner_id = current_setting('app.current_user_id', true)::int)
-    );
 
 -- 份额表 shares
 -- 一个更好的版本
